@@ -19,6 +19,8 @@ window.FIREBASE_CONFIG = {
   projectId: "",
   appId: ""
 };
+// Light (yellow) unless dark was chosen with the sun/moon button on this device.
+try { if (localStorage.getItem('colouring-theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
 </script>
 <style>
 :root{
@@ -29,7 +31,14 @@ window.FIREBASE_CONFIG = {
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
-/* Always the yellow look, even when the iPad is in dark mode. */
+/* Yellow by default, even when the iPad is in dark mode. Dark only via the sun/moon button. */
+:root[data-theme="dark"]{
+  --bg:#151C3D; --tray:#232C5C; --ink:#F4F1FF; --ink-soft:#B9C0E8; --edge:#6F7BC4;
+  --accent:#FF6B76; --muted:#2C366C; --ok:#5FD39C; --err:#FF7A85; color-scheme:dark;
+}
+#themeBtn .sun{display:none}
+:root[data-theme="dark"] #themeBtn .sun{display:block}
+:root[data-theme="dark"] #themeBtn .moon{display:none}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{
@@ -177,6 +186,10 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
       <button id="tidyBtn" class="pill" aria-pressed="false">Tidy up</button>
       <button id="lockBtn" class="lockBtn" aria-label="Open the grown-ups’ vault">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></svg>
+      </button>
+      <button id="themeBtn" class="lockBtn" aria-label="Switch between light and dark">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
       </button>
     </div>
   </header>
@@ -593,6 +606,11 @@ function newSum(){
 let lockThen = null;
 function askSum(text, then){ lockThen = then; $('#lockText').textContent = text; newSum(); $('#lockMsg').textContent = ''; $('#lock').hidden = false; setTimeout(() => $('#ans').focus(), 50); }
 $('#lockBtn').onclick = () => askSum('Answer the sum to open the vault.', openVault);
+$('#themeBtn').onclick = () => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  if (dark) document.documentElement.dataset.theme = 'dark'; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem('colouring-theme', dark ? 'dark' : 'light'); } catch (e) {}
+};
 $('#lockNo').onclick = () => { $('#lock').hidden = true; lockThen = null; };
 function tryUnlock(){
   if (parseInt($('#ans').value, 10) === sumAnswer) { $('#lock').hidden = true; const f = lockThen; lockThen = null; if (f) f(); }
