@@ -124,6 +124,19 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 .paper canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #cv{touch-action:none;cursor:crosshair}
 #lc{pointer-events:none}
+/* The purple "finished" tick: saves the picture and cheers. Same colours in both themes. */
+.tickBtn{flex:none;width:84px;height:84px;border-radius:50%;background:#7B4FD6;border:4px solid var(--edge);
+  box-shadow:0 5px 0 var(--edge);display:flex;align-items:center;justify-content:center;padding:0;z-index:3}
+.tickBtn svg{width:62%;height:62%}
+.tickBtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 var(--edge)}
+.tickBtn:disabled{opacity:.6;cursor:default}
+.cheer{position:fixed;left:50%;top:50%;z-index:30;pointer-events:none;transform:translate(-50%,-50%);
+  font-size:clamp(3rem,11vw,7rem);font-weight:700;color:#FF8A1F;white-space:nowrap;
+  -webkit-text-stroke:3px #4E2A9A;paint-order:stroke fill;text-shadow:0 6px 0 #4E2A9A}
+.cheer.pop{animation:cheerPop 1.7s ease-out forwards}
+@keyframes cheerPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}15%{transform:translate(-50%,-50%) scale(1.12);opacity:1}
+  25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+@media (prefers-reduced-motion: reduce){.cheer.pop{animation:none}}
 #fsBtn .exit{display:none}
 .fs #fsBtn .enter{display:none}
 .fs #fsBtn .exit{display:block}
@@ -133,12 +146,15 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
   .workspace{grid-template-columns:1fr;grid-template-rows:1fr auto;gap:12px}
   .stage{order:1}
   .tools{order:2;flex-direction:row;justify-content:center;gap:10px}
-  .tool{--ts:min(76px, calc((100vw - 28px - 40px) / 5));width:var(--ts);height:var(--ts);border-radius:calc(var(--ts) * .28)}
+  #editor{--ts:min(76px, calc((100vw - 28px - 40px) / 5));position:relative}
+  .tool{width:var(--ts);height:var(--ts);border-radius:calc(var(--ts) * .28)}
   .tool svg{width:calc(var(--ts) * .55);height:calc(var(--ts) * .55)}
   .colourBtn .dot{width:calc(var(--ts) * .5);height:calc(var(--ts) * .5)}
   .tbtn .txt{display:none}
   .tbtn{width:56px;padding:0;justify-content:center}
   #fsBtn{display:none !important}
+  /* Tick floats bottom right, just above the tool row, in the empty space under the page. */
+  .tickBtn{position:absolute;right:max(14px, env(safe-area-inset-right,0px));bottom:calc(var(--ts) + 36px);width:min(84px, calc(var(--ts) * 1.1));height:min(84px, calc(var(--ts) * 1.1))}
 }
 @media (orientation: portrait) and (max-width: 500px){
   .tool span:not(.dot){display:none}
@@ -152,10 +168,10 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
    rails (5 buttons each) always fit. */
 @media (orientation: landscape){
   #editor{
-    --rb:clamp(40px, calc((100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 5), 84px);
-    --rb:clamp(40px, calc((100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 5), 84px);
+    --rb:clamp(40px, calc((100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 6), 84px);
+    --rb:clamp(40px, calc((100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 6), 84px);
     display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:1fr repeat(5,auto) 1fr;
-    /* --rb: 5 buttons + 6 row gaps (8px) + 12px padding must fit the height */
+    /* --rb: right rail is 5 buttons + the tick, with 6 row gaps (8px) and 12px padding, and must fit the height */
     column-gap:12px;row-gap:8px;padding-block:6px;position:relative;
   }
   #editor[hidden]{display:none}
@@ -168,6 +184,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
   #resetBtn{grid-column:3;grid-row:4}
   #downloadBtn{grid-column:3;grid-row:5}
   #fsBtn{grid-column:3;grid-row:6}
+  .tickBtn{grid-column:3;grid-row:7;align-self:end;width:var(--rb);height:var(--rb)}
   .tool,.tbtn{width:var(--rb);height:var(--rb);border-radius:calc(var(--rb) * .28);padding:0;justify-content:center}
   .tool svg{width:calc(var(--rb) * .56);height:calc(var(--rb) * .56)}
   .tbtn svg{width:calc(var(--rb) * .42);height:calc(var(--rb) * .42)}
@@ -297,6 +314,10 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
       </div>
     </div>
   </div>
+  <button id="tickBtn" class="tickBtn" aria-label="Finished! Save my picture">
+    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#1E2A5A" stroke-width="5.4"/><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#FF8A1F" stroke-width="3.4"/></svg>
+  </button>
+  <div id="cheer" class="cheer" role="status" hidden></div>
 </section>
 
 <!-- ===== Colour picker ===== -->
@@ -475,7 +496,7 @@ let tool = TOOLS[0], colour = '#E8414E';
 let store = null, mode = 'local', readOnly = false, claudeDownloads = null;
 let thumbs = {};          // 'g0'..'g29' and 'v0'..'v49' -> {img, updated, by}
 let curId = null, curTpl = null, curLines = null, isNew = false;
-let dirty = false, saving = false, pendingSave = false, saveTimer = 0;
+let dirty = false, saving = false;
 let undo = [];
 let tidying = false;
 
@@ -759,18 +780,16 @@ function buildTools(){
     const b = document.createElement('button');
     b.className = 'tool'; b.dataset.id = t.id;
     b.innerHTML = t.svg + '<span>' + t.label + '</span>';
-    b.setAttribute('aria-label', t.label + (t.id === 'eraser' ? '' : '. Tap twice to pick a colour'));
-    let lastTap = 0;
-    // pointerup fires for every quick tap on iPad, where a fast second click can be swallowed
-    b.addEventListener('pointerup', () => {
-      const now = performance.now();
-      const twice = tool === t && now - lastTap < 500;
-      lastTap = now;
+    b.setAttribute('aria-label', t.label + (t.id === 'eraser' ? '' : '. Tap again to pick a colour'));
+    // Tapping the tool that is already selected opens the colours, however slow the second tap is.
+    // pointerup fires for every quick tap on iPad, where a fast second click can be swallowed.
+    const choose = () => {
+      const again = tool === t;
       tool = t; syncTools();
-      if (twice && t.id !== 'eraser') { lastTap = 0; openPicker(); }
-    });
-    b.addEventListener('dblclick', e => { e.preventDefault(); if (t.id !== 'eraser') openPicker(); });
-    b.addEventListener('click', e => { if (e.detail === 0) { tool = t; syncTools(); } }); // keyboard
+      if (again && t.id !== 'eraser') openPicker();
+    };
+    b.addEventListener('pointerup', choose);
+    b.addEventListener('click', e => { if (e.detail === 0) choose(); }); // keyboard
     wrap.appendChild(b);
   });
   const cb = document.createElement('button');
@@ -841,7 +860,7 @@ async function startNew(tplId){
   dirty = false; undo = []; updateUndo();
   show('editor'); blank(); fitCanvas();
   await setLines(tplSrc(tplId));
-  setStatus('Tap a tool twice to change colour');
+  setStatus('Tap a tool again to change colour');
 }
 async function openPicture(id){
   curId = id; isNew = false; dirty = false; undo = []; updateUndo();
@@ -858,11 +877,17 @@ async function openPicture(id){
     setStatus('');
   } catch (e) { setStatus('Couldn’t open this picture', 'err'); }
 }
-$('#homeBtn').onclick = async () => {
-  clearTimeout(saveTimer);
-  if (dirty) await saveNow();
-  show('gallery'); renderGallery();
+// Nothing is saved until the tick is tapped. Leaving with changes throws them away,
+// so the picture goes back to how it was last saved.
+function leaveEditor(){ dirty = false; show('gallery'); renderGallery(); }
+$('#homeBtn').onclick = () => {
+  if (!dirty) { leaveEditor(); return; }
+  confirmBox('Leave without saving?',
+    isNew ? 'This new picture hasn’t been saved. Tap the purple tick to save it first.'
+          : 'Your changes haven’t been saved. The picture will go back to how it was before.',
+    'Leave without saving', 'Keep drawing', leaveEditor);
 };
+window.addEventListener('beforeunload', e => { if (dirty && !$('#editor').hidden) { e.preventDefault(); e.returnValue = ''; } });
 
 /* ---------- undo / reset ---------- */
 function pushUndo(){ try { undo.push(ctx.getImageData(0, 0, W, H)); if (undo.length > 10) undo.shift(); } catch (e) {} updateUndo(); }
@@ -911,7 +936,7 @@ cv.addEventListener('pointercancel', endStroke);
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 /* ---------- saving ---------- */
-function markDirty(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 1200); }
+function markDirty(){ if (!dirty && !saving) setStatus('Tap the tick to save'); dirty = true; }
 function encodePaint(){
   for (const q of [0.82, 0.7, 0.58, 0.45]) { const s = cv.toDataURL('image/jpeg', q); if (s.length < 200000) return s; }
   const t = document.createElement('canvas'); t.width = 900; t.height = 675; t.getContext('2d').drawImage(cv, 0, 0, 900, 675);
@@ -922,21 +947,22 @@ function composite(w, h){
   const x = t.getContext('2d'); x.drawImage(cv, 0, 0, w, h); x.drawImage(lc, 0, 0, w, h);
   return t;
 }
+// Returns true once the picture is safely saved.
 async function saveNow(){
-  if (!dirty || !curId || readOnly) return;
-  if (saving) { pendingSave = true; return; }
+  if (!curId || readOnly || saving) return false;
   if (isNew && thumbs[curId] && thumbs[curId].by !== sessionId) {
     const free = firstFree(GIDS);
-    if (!free) { setStatus('All ' + GSLOTS + ' spaces are full. Delete a picture to save this one.', 'err'); return; }
+    if (!free) { setStatus('All ' + GSLOTS + ' spaces are full. Delete a picture to save this one.', 'err'); return false; }
     curId = free;
   }
-  saving = true; dirty = false; setStatus('Saving…');
+  saving = true; dirty = false; setStatus('Saving…'); $('#tickBtn').disabled = true;
   try {
     const rec = { img: encodePaint(), tpl: curTpl };
     if (curLines && curLines.length < 40000) rec.lines = curLines; // small own-picture lines travel with the picture
     await store.save(curId, rec, composite(320, 240).toDataURL('image/jpeg', 0.72));
     isNew = false;
     setStatus('Saved', 'ok');
+    return true;
   } catch (e) {
     dirty = true;
     if (e && e.code === 'invalid_argument') {
@@ -944,13 +970,49 @@ async function saveNow(){
       setStatus('This page is view-only for you, so drawings can’t be saved', 'err');
       showBanner('You can look at the pictures, but your access to this page doesn’t allow saving. Ask the owner for Contributor access.');
     } else {
-      setStatus('Couldn’t save. Check the connection; it will try again.', 'err');
-      clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 5000);
+      setStatus('Couldn’t save. Check the connection and tap the tick again.', 'err');
     }
+    return false;
+  } finally {
+    saving = false; $('#tickBtn').disabled = false;
   }
-  saving = false;
-  if (pendingSave) { pendingSave = false; saveNow(); }
 }
+
+/* ---------- the tick: save and cheer ---------- */
+const CHEERS = ['Excellent!', 'Awesome!'];
+let cheerIdx = Math.floor(Math.random() * CHEERS.length), cheerTimer = 0, voice = null;
+// A bright American voice: the best-known lively US voices first (iPad/iPhone, Android/Chrome, Windows),
+// then any US English voice, then any English voice.
+const VOICE_PREFS = ['Samantha (Enhanced)', 'Ava (Premium)', 'Ava (Enhanced)', 'Zoe (Premium)', 'Zoe (Enhanced)', 'Samantha', 'Ava', 'Zoe',
+  'Google US English', 'Microsoft Aria', 'Microsoft Jenny', 'Allison', 'Nicky'];
+function pickVoice(){
+  const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  const us = vs.filter(v => /^en[-_]US/i.test(v.lang));
+  voice = null;
+  for (const name of VOICE_PREFS) { voice = us.find(v => v.name.startsWith(name)); if (voice) break; }
+  voice = voice || us[0] || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+if (window.speechSynthesis) { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); }
+function cheer(){
+  cheerIdx = (cheerIdx + 1) % CHEERS.length;
+  const word = CHEERS[cheerIdx];
+  const el = $('#cheer');
+  el.textContent = word; el.hidden = false;
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  clearTimeout(cheerTimer); cheerTimer = setTimeout(() => { el.hidden = true; }, 1700);
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(word);
+    if (voice) u.voice = voice;
+    u.lang = voice ? voice.lang : 'en-US'; u.rate = 1.1; u.pitch = 1.7; u.volume = 1;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+$('#tickBtn').onclick = async () => {
+  if (readOnly) { setStatus('This page is view-only for you', 'err'); return; }
+  if ((dirty || isNew) && !(await saveNow())) return; // a new page saves even if it's still blank
+  cheer();
+};
 
 /* ---------- full screen (Android Chrome, iPad; iPhone Safari has no full screen for pages) ---------- */
 (function(){
