@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Colouring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+/* ===== Shared pictures outside Claude =====
+   Leave projectId empty to keep pictures on each device only.
+   To share pictures between every device, paste your Firebase web config here
+   (see README.md). */
+window.FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  appId: ""
+};
+</script>
+<style>
+:root{
+  --bg:#FFD84D; --tray:#FFFFFF; --ink:#1E2A5A; --ink-soft:#4A5688; --edge:#1E2A5A;
+  --accent:#E8414E; --muted:#FFF3C2; --ok:#1F7A50; --err:#C42A37; --paper:#FFFFFF;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151C3D; --tray:#232C5C; --ink:#F4F1FF; --ink-soft:#B9C0E8; --edge:#6F7BC4;
+    --accent:#FF6B76; --muted:#2C366C; --ok:#5FD39C; --err:#FF7A85; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151C3D; --tray:#232C5C; --ink:#F4F1FF; --ink-soft:#B9C0E8; --edge:#6F7BC4;
+  --accent:#FF6B76; --muted:#2C366C; --ok:#5FD39C; --err:#FF7A85; color-scheme:dark;
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Fredoka",ui-rounded,"Arial Rounded MT Bold","Helvetica Neue",system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden;
+}
+button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline-offset:3px}
+[hidden]{display:none !important}
+.screen{height:100%;display:flex;flex-direction:column;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:24px}
+
+/* ---------- headers & buttons ---------- */
+.g-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:22px 4px 14px}
+.g-head h1{margin:0;font-size:clamp(2rem,5vw,3rem);font-weight:700;line-height:1;letter-spacing:-.01em}
+.g-head p{margin:6px 0 0;color:var(--ink-soft);font-size:1.05rem}
+.head-actions{display:flex;gap:10px;align-items:center}
+.pill{border:3px solid var(--edge);background:var(--tray);border-radius:999px;padding:10px 18px;
+  font-weight:600;font-size:1rem;box-shadow:0 4px 0 var(--edge)}
+.pill:active{transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.pill.on{background:var(--accent);color:#fff}
+.pill.danger{background:var(--accent);color:#fff}
+.lockBtn{width:54px;height:54px;border-radius:50%;border:3px solid var(--edge);background:var(--tray);
+  box-shadow:0 4px 0 var(--edge);display:flex;align-items:center;justify-content:center;padding:0}
+.lockBtn svg{width:28px;height:28px}
+.lockBtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.banner{margin:0 4px 14px;padding:12px 16px;border-radius:16px;background:var(--muted);
+  border:2px dashed var(--edge);font-size:.98rem;line-height:1.4;max-width:70ch}
+
+/* ---------- picture grids ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;padding:4px}
+.tile{position:relative;aspect-ratio:4/3;border-radius:18px;border:3px solid var(--edge);background:var(--paper);
+  box-shadow:0 5px 0 var(--edge);overflow:hidden}
+.tile img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.tile .open{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;background:none}
+.tile:has(.open:active){transform:translateY(3px);box-shadow:0 2px 0 var(--edge)}
+.tile.empty{background:transparent;border-style:dashed;box-shadow:none}
+.tile.empty .open{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tile.empty .plus{font-size:2.6rem;font-weight:500;line-height:1}
+.tile.empty .lbl{font-size:.95rem;font-weight:500}
+.badges{position:absolute;top:8px;right:8px;display:flex;gap:8px}
+.badge{width:46px;height:46px;border-radius:50%;border:3px solid #fff;color:#fff;padding:0;
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;line-height:1;
+  box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.badge svg{width:22px;height:22px}
+.badge.keep{background:#1E2A5A}
+.badge.del{background:#E8414E}
+.vbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;justify-content:center}
+.vbar .pill{padding:6px 14px;font-size:.92rem;box-shadow:0 3px 0 var(--edge)}
+.tidying .tile:not(.empty){animation:wobble .5s ease-in-out infinite alternate}
+@keyframes wobble{from{transform:rotate(-.8deg)}to{transform:rotate(.8deg)}}
+@media (prefers-reduced-motion: reduce){.tidying .tile{animation:none !important}}
+.note{padding:20px 4px;color:var(--ink-soft);font-size:1.1rem;max-width:60ch;line-height:1.45}
+
+/* ---------- editor ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 0}
+.spacer{flex:1}
+.tbtn{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px;border-radius:18px;
+  border:3px solid var(--edge);background:var(--tray);box-shadow:0 4px 0 var(--edge);font-weight:600;font-size:1.05rem}
+.tbtn svg{width:26px;height:26px;flex:none}
+.tbtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.tbtn:disabled{opacity:.45;cursor:default}
+.status{font-size:1rem;color:var(--ink-soft);font-weight:500;padding-left:4px}
+.status.err{color:var(--err)}
+.status.ok{color:var(--ok)}
+.workspace{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr;gap:16px;padding-bottom:14px}
+.tools{display:flex;flex-direction:column;gap:12px;justify-content:center}
+.tool{width:80px;height:80px;border-radius:22px;border:3px solid var(--edge);background:var(--tray);
+  box-shadow:0 4px 0 var(--edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px}
+.tool svg{width:44px;height:44px}
+.tool span{font-size:.8rem;font-weight:600}
+.tool[aria-pressed="true"]{background:var(--muted);border-width:4px;transform:translateY(-3px);box-shadow:0 7px 0 var(--edge)}
+.colourBtn .dot{width:40px;height:40px;border-radius:50%;background:var(--cur);border:3px solid currentColor}
+.tidybar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;max-width:none}
+.stage{position:relative;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center}
+.paper{position:relative;background:var(--paper);border:4px solid var(--edge);border-radius:20px;
+  box-shadow:0 7px 0 var(--edge);overflow:hidden}
+.paper canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#cv{touch-action:none;cursor:crosshair}
+#lc{pointer-events:none}
+@media (orientation: portrait), (max-width: 760px){
+  .workspace{grid-template-columns:1fr;grid-template-rows:1fr auto;gap:12px}
+  .stage{order:1}
+  .tools{order:2;flex-direction:row;justify-content:center}
+  .tool{width:76px;height:76px}
+  .tbtn .txt{display:none}
+  .tbtn{width:56px;padding:0;justify-content:center}
+}
+
+/* ---------- full-screen overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:15;background:var(--bg);display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top,0px) + 18px) max(18px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 18px) max(18px,env(safe-area-inset-left,0px))}
+.p-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.p-head h2{margin:0;font-size:clamp(1.6rem,4vw,2.4rem);font-weight:700;line-height:1.1}
+.p-head p{margin:4px 0 0;color:var(--ink-soft);font-size:1.05rem}
+.p-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow-y:auto}
+.colours{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:clamp(8px,1.6vw,18px);width:100%;max-width:1000px;
+  background:var(--tray);border:4px solid var(--edge);border-radius:28px;box-shadow:0 7px 0 var(--edge);padding:clamp(14px,2.5vw,28px)}
+.sw{width:100%;aspect-ratio:1;border-radius:50%;border:3px solid var(--edge);padding:0;transition:transform .12s}
+.sw[aria-pressed="true"]{transform:scale(1.16);box-shadow:0 0 0 4px var(--tray),0 0 0 7px var(--edge)}
+@media (prefers-reduced-motion: reduce){.sw{transition:none}}
+@media (max-width: 600px){.colours{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.chooser-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 4px 20px}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+.tpl{aspect-ratio:4/3;border-radius:18px;border:3px solid var(--edge);background:#fff;box-shadow:0 5px 0 var(--edge);
+  padding:0;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+.tpl img{width:100%;height:100%;object-fit:contain;display:block}
+.tpl .cap{position:absolute;left:8px;bottom:8px;background:var(--tray);color:var(--ink);border:2px solid var(--edge);
+  border-radius:999px;padding:2px 12px;font-size:.9rem;font-weight:600}
+.tpl:active{transform:translateY(3px);box-shadow:0 2px 0 var(--edge)}
+.tpl.blank .cap{left:50%;bottom:50%;transform:translate(-50%,50%);font-size:1.1rem;padding:6px 18px}
+.tpl.add{background:transparent;border-style:dashed;box-shadow:none;flex-direction:column;gap:4px;color:var(--ink)}
+.tpl.add .plus{font-size:2.4rem;line-height:1}
+.tpl.add .lbl{font-size:.95rem;font-weight:500;text-align:center;padding:0 10px}
+
+/* ---------- modals ---------- */
+.scrim{position:fixed;inset:0;background:rgba(10,14,40,.5);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.modal{background:var(--tray);border:4px solid var(--edge);border-radius:26px;box-shadow:0 8px 0 var(--edge);
+  padding:26px;max-width:420px;width:100%;text-align:center}
+.modal h2{margin:0 0 8px;font-size:1.6rem;font-weight:700}
+.modal p{margin:0 0 20px;color:var(--ink-soft);font-size:1.05rem;line-height:1.4}
+.modal .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.sum{font-size:2.6rem;font-weight:700;margin:4px 0 14px}
+.ans{width:150px;font:inherit;font-size:2rem;font-weight:600;text-align:center;padding:8px;border-radius:16px;
+  border:3px solid var(--edge);background:var(--paper);color:#1B1B1F;-webkit-user-select:text;user-select:text;margin-bottom:8px}
+.msg{min-height:1.4em;color:var(--err) !important;margin-bottom:12px !important}
+</style>
+</head>
+<body>
+
+<!-- ===== Main gallery ===== -->
+<section id="gallery" class="screen scroll">
+  <header class="g-head">
+    <div>
+      <h1>Our pictures</h1>
+      <p id="count">Getting the pictures…</p>
+    </div>
+    <div class="head-actions">
+      <button id="tidyBtn" class="pill" aria-pressed="false">Tidy up</button>
+      <button id="lockBtn" class="lockBtn" aria-label="Open the grown-ups’ vault">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+  <p id="banner" class="banner" hidden></p>
+  <div id="tidyNote" class="banner tidybar" hidden><span>Tap the padlock on a picture to keep it in the vault, or × to delete it.</span><button id="clearAllBtn" class="pill danger">Clear all pictures</button></div>
+  <div id="grid" class="grid"><div class="note">Getting the pictures…</div></div>
+</section>
+
+<!-- ===== Vault ===== -->
+<section id="vault" class="screen scroll" hidden>
+  <header class="g-head">
+    <div>
+      <h1>The vault</h1>
+      <p id="vcount"></p>
+    </div>
+    <button id="vaultBack" class="pill">Back to pictures</button>
+  </header>
+  <div id="vgrid" class="grid"></div>
+</section>
+
+<!-- ===== Editor ===== -->
+<section id="editor" class="screen" hidden>
+  <div class="topbar">
+    <button id="homeBtn" class="tbtn" aria-label="Back to all pictures">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+      <span class="txt">All pictures</span>
+    </button>
+    <span id="status" class="status" role="status"></span>
+    <div class="spacer"></div>
+    <button id="undoBtn" class="tbtn" aria-label="Undo" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+      <span class="txt">Undo</span>
+    </button>
+    <button id="resetBtn" class="tbtn" aria-label="Start again">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      <span class="txt">Start again</span>
+    </button>
+    <button id="downloadBtn" class="tbtn" aria-label="Save to device">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+      <span class="txt">Save to device</span>
+    </button>
+  </div>
+  <div class="workspace">
+    <div class="tools" id="tools" role="toolbar" aria-label="Drawing tools"></div>
+    <div class="stage" id="stage">
+      <div class="paper" id="paper">
+        <canvas id="cv" width="1200" height="900" aria-label="Drawing page"></canvas>
+        <canvas id="lc" width="1200" height="900" aria-hidden="true"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Colour picker ===== -->
+<div id="picker" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pTitle">
+  <div class="p-head">
+    <div><h2 id="pTitle">Pick a colour</h2><p>Tap a colour to start drawing with it.</p></div>
+    <button id="pClose" class="pill">Done</button>
+  </div>
+  <div class="p-body"><div class="colours" id="colours" role="group" aria-label="Colours"></div></div>
+</div>
+
+<!-- ===== Template chooser ===== -->
+<div id="chooser" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="p-head">
+    <div><h2 id="cTitle">What shall we colour?</h2><p>Pick a picture to colour in, or a blank page to draw on.</p></div>
+    <button id="cClose" class="pill">Cancel</button>
+  </div>
+  <div class="chooser-body"><div class="tgrid" id="tgrid"></div></div>
+  <input id="fileIn" type="file" accept="image/*" hidden>
+</div>
+
+<!-- ===== Confirm box ===== -->
+<div id="scrim" class="scrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle"></h2>
+    <p id="mText"></p>
+    <div class="row">
+      <button id="mNo" class="pill"></button>
+      <button id="mYes" class="pill danger"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Vault lock ===== -->
+<div id="lock" class="scrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lTitle">
+    <h2 id="lTitle">Grown-ups only</h2>
+    <p id="lockText">Answer the sum to open the vault.</p>
+    <div class="sum" id="sum"></div>
+    <input id="ans" class="ans" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Answer">
+    <p id="lockMsg" class="msg" role="status"></p>
+    <div class="row">
+      <button id="lockNo" class="pill">Cancel</button>
+      <button id="lockYes" class="pill danger">Open</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const W = 1200, H = 900, GSLOTS = 30, VSLOTS = 50;
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), lc = $('#lc');
+const ctx = cv.getContext('2d', { willReadFrequently: true });
+const lctx = lc.getContext('2d');
+const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+/* ================= colours & tools ================= */
+const COLOURS = [
+  ['Light red','#F7A3A8'],['Light orange','#FFC27A'],['Light yellow','#FFF09A'],['Lime','#A8E06A'],['Light teal','#8FE0D7'],
+  ['Sky blue','#3DB8F5'],['Lavender','#C9B6F2'],['Light pink','#FFB3C7'],['Peach','#F2C09B'],['White','#FFFFFF'],
+  ['Red','#E8414E'],['Orange','#FF8A1F'],['Yellow','#FFD21F'],['Green','#2EA84F'],['Teal','#1FB5A8'],
+  ['Blue','#2F5FD8'],['Purple','#7B4FD6'],['Pink','#F06AB0'],['Tan','#C68A5A'],['Grey','#8A8F9E'],
+  ['Dark red','#A91E2C'],['Dark orange','#D2580A'],['Mustard','#E0A800'],['Dark green','#1C6B35'],['Dark teal','#0E7C73'],
+  ['Dark blue','#1B3A8C'],['Dark purple','#4E2A9A'],['Dark pink','#C1307E'],['Brown','#8B5A2B'],['Black','#1B1B1F']
+];
+const TOOLS = [
+  { id:'pencil', label:'Pencil', size:7,
+    svg:'<svg viewBox="0 0 48 48"><path d="M10 38 13 27 32 8l8 8-19 19z" fill="var(--tray)" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M10 38l3-11 8 8z" fill="var(--cur)" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M28 12l8 8" stroke="currentColor" stroke-width="3"/></svg>' },
+  { id:'marker', label:'Marker', size:30,
+    svg:'<svg viewBox="0 0 48 48"><rect x="17" y="4" width="14" height="26" rx="4" fill="var(--tray)" stroke="currentColor" stroke-width="3"/><path d="M17 30h14l-2 8h-10z" fill="var(--cur)" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><rect x="19" y="38" width="10" height="6" rx="2" fill="var(--cur)" stroke="currentColor" stroke-width="3"/></svg>' },
+  { id:'spray', label:'Spray', size:36,
+    svg:'<svg viewBox="0 0 48 48"><rect x="10" y="16" width="16" height="28" rx="5" fill="var(--cur)" stroke="currentColor" stroke-width="3"/><rect x="13" y="9" width="10" height="7" rx="2" fill="var(--tray)" stroke="currentColor" stroke-width="3"/><g fill="var(--cur)" stroke="currentColor" stroke-width="1.5"><circle cx="33" cy="9" r="2.5"/><circle cx="40" cy="13" r="2.5"/><circle cx="36" cy="19" r="2.5"/><circle cx="43" cy="21" r="2.5"/></g></svg>' },
+  { id:'eraser', label:'Rubber', size:46,
+    svg:'<svg viewBox="0 0 48 48"><path d="M8 30 26 12a4 4 0 0 1 5.6 0l7.4 7.4a4 4 0 0 1 0 5.6L24 40H16z" fill="#F7A8B8" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M8 30l10 10" stroke="currentColor" stroke-width="3"/><path d="M14 40h26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>' }
+];
+
+/* ================= templates (original line art) ================= */
+const INK = '#1B1B1F';
+const G = 'fill="none" stroke="' + INK + '" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"';
+const F = 'fill="' + INK + '" stroke="none"';
+function ground(y, flower){
+  let s = '<path d="M60 ' + y + ' H1140"/>';
+  for (let x = 110; x < 1140; x += 70) s += '<circle cx="' + x + '" cy="' + (y + 38 + (x % 140 ? 22 : 0)) + '" r="5" ' + F + '/>';
+  if (flower) s += flowerAt(flower, y);
+  return s;
+}
+function flowerAt(x, y){
+  let s = '<path d="M' + x + ' ' + y + ' V' + (y - 110) + '"/><path d="M' + x + ' ' + (y - 40) + ' c-30 -10 -45 -30 -40 -50 c25 5 40 25 40 50z"/>';
+  const cy = y - 150, R = 38, r = 20;
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; s += '<circle cx="' + (x + Math.cos(a) * R).toFixed(1) + '" cy="' + (cy + Math.sin(a) * R).toFixed(1) + '" r="' + r + '"/>'; }
+  s += '<circle cx="' + x + '" cy="' + cy + '" r="22" fill="#fff"/>';
+  return s;
+}
+const TEMPLATES = [
+  { id:'rocket', name:'Rocket', art:
+    '<path d="M600 120 C700 210 725 340 720 520 H480 C475 340 500 210 600 120Z"/>' +
+    '<circle cx="600" cy="330" r="58"/><circle cx="600" cy="330" r="30"/>' +
+    '<path d="M482 420 L395 570 L485 545"/><path d="M718 420 L805 570 L715 545"/>' +
+    '<path d="M520 520 V565 H680 V520"/><path d="M550 565 Q565 660 600 720 Q635 660 650 565"/>' +
+    '<path d="M240 180 v50 M215 205 h50"/><path d="M960 260 v50 M935 285 h50"/><path d="M880 120 v36 M862 138 h36"/>' +
+    '<circle cx="300" cy="420" r="12" ' + F + '/><circle cx="930" cy="470" r="12" ' + F + '/><circle cx="210" cy="650" r="10" ' + F + '/>' },
+  { id:'flower', name:'Flowers', art:
+    ground(800) +
+    '<path d="M600 800 V360"/><path d="M600 620 C530 560 470 590 450 640 C520 660 570 650 600 620Z"/><path d="M600 540 C670 480 730 510 750 560 C680 580 630 570 600 540Z"/>' +
+    (function(){ let s=''; const cx=600, cy=270, R=105; for (let i=0;i<8;i++){ const a=i*Math.PI/4; s+='<circle cx="'+(cx+Math.cos(a)*R).toFixed(1)+'" cy="'+(cy+Math.sin(a)*R).toFixed(1)+'" r="44"/>'; } return s + '<circle cx="600" cy="270" r="58" fill="#fff"/>'; })() +
+    flowerAt(250, 800) + flowerAt(950, 800) },
+  { id:'fish', name:'Fish', art:
+    '<path d="M300 450 C400 280 700 280 800 450 C700 620 400 620 300 450Z"/><path d="M800 450 L950 330 L950 570Z"/>' +
+    '<circle cx="410" cy="420" r="30" fill="#fff"/><circle cx="414" cy="420" r="12" ' + F + '/>' +
+    '<path d="M540 335 C580 250 670 255 700 330"/><path d="M480 380 C510 430 510 470 480 520"/>' +
+    '<path d="M570 420 q30 30 0 60"/><path d="M650 420 q30 30 0 60"/><path d="M610 370 q30 30 0 60"/><path d="M610 470 q30 30 0 60"/>' +
+    '<circle cx="240" cy="330" r="20"/><circle cx="205" cy="245" r="28"/><circle cx="250" cy="160" r="16"/>' +
+    '<path d="M150 860 C110 790 190 750 150 680 C120 630 160 600 150 560"/><path d="M1060 860 C1020 790 1100 750 1060 680 C1030 630 1070 600 1060 560"/>' },
+  { id:'house', name:'House', art:
+    ground(780, 980) +
+    '<path d="M380 430 V780 H820 V430"/><path d="M340 450 L600 230 L860 450"/>' +
+    '<path d="M720 330 V250 H785 V385"/>' +
+    '<path d="M550 780 V650 a50 50 0 0 1 100 0 V780"/><circle cx="630" cy="715" r="7" ' + F + '/>' +
+    '<rect x="420" y="490" width="95" height="95" rx="8"/><path d="M467 490 V585 M420 537 H515"/>' +
+    '<rect x="685" y="490" width="95" height="95" rx="8"/><path d="M732 490 V585 M685 537 H780"/>' +
+    '<circle cx="190" cy="170" r="65"/>' },
+  { id:'car', name:'Car', art:
+    '<path d="M260 600 V520 Q260 480 300 480 H420 L500 360 H760 L850 480 H920 Q960 480 960 520 V600 Z"/>' +
+    '<path d="M520 390 L460 480 H620 V390Z"/><path d="M650 390 V480 H800 L745 390Z"/>' +
+    '<circle cx="400" cy="625" r="72" fill="#fff"/><circle cx="400" cy="625" r="24"/>' +
+    '<circle cx="820" cy="625" r="72" fill="#fff"/><circle cx="820" cy="625" r="24"/>' +
+    '<circle cx="932" cy="525" r="14"/><path d="M580 520 H620"/>' +
+    '<path d="M60 715 H1140"/><path d="M120 790 H220 M340 790 H440 M560 790 H660 M780 790 H880 M1000 790 H1100"/>' +
+    '<path d="M150 190 a45 45 0 0 1 85 -20 a55 55 0 0 1 100 10 a40 40 0 0 1 0 80 H170 a40 40 0 0 1 -20 -70Z"/>' },
+  { id:'snail', name:'Snail', art:
+    ground(700, 1000) +
+    '<path d="M260 700 H860 C905 700 915 655 900 615 L872 430 C862 385 805 385 795 430 L770 640"/>' +
+    '<circle cx="560" cy="465" r="175" fill="#fff"/>' +
+    '<path d="M560 465 L559 465 L559 465 L558 464 L557 464 L557 464 L556 463 L556 462 L555 462 L555 461 L555 460 L555 459 L555 458 L555 457 L555 456 L556 455 L556 454 L557 453 L558 452 L559 451 L560 450 L561 450 L562 449 L564 449 L565 448 L567 448 L569 448 L570 448 L572 449 L574 449 L575 450 L577 450 L579 451 L580 452 L582 454 L583 455 L585 457 L586 459 L587 461 L588 463 L589 465 L590 467 L590 470 L590 472 L590 475 L590 477 L590 480 L589 483 L588 485 L587 488 L586 491 L584 493 L582 495 L580 498 L578 500 L575 502 L573 504 L570 505 L567 507 L563 508 L560 508 L557 509 L553 509 L549 509 L546 509 L542 509 L538 508 L535 506 L531 505 L528 503 L524 501 L521 498 L518 496 L515 493 L512 489 L510 486 L508 482 L506 478 L504 474 L503 469 L502 465 L501 460 L501 456 L501 451 L502 446 L503 441 L504 437 L506 432 L508 427 L511 423 L514 419 L517 415 L521 411 L525 408 L529 404 L534 401 L538 399 L544 397 L549 395 L554 393 L560 392 L566 392 L572 392 L577 392 L583 393 L589 395 L595 397 L601 399 L606 402 L611 405 L616 409 L621 413 L626 417 L630 422 L634 427 L637 433 L640 439 L642 445 L644 452 L646 458 L647 465 L647 472 L647 479 L647 486 L645 493 L644 500 L641 506 L639 513 L635 520 L631 526 L627 532 L622 537 L616 542 L610 547 L604 552 L597 555 L590 559 L583 562 L576 564 L568 565 L560 566 L552 567 L544 567 L536 566 L528 564 L520 562 L512 559 L504 556 L497 552 L490 547 L483 542 L477 536 L471 530 L465 523 L461 516 L456 508 L452 500 L449 492 L447 483 L445 474 L444 465 L444 456 L444 447 L445 437 L447 428 L449 419 L453 410 L457 402 L461 393 L467 385 L473 378 L479 371 L487 364 L494 358 L503 353 L511 348 L521 344 L530 340 L540 338 L550 336 L560 334 L570 334 L581 335 L591 336 L601 338 L611 341 L621 345 L631 349 L640 355 L649 361 L657 368 L665 375 L673 383 L679 392 L685 401 L691 411 L695 421 L699 432 L702 443 L704 454 L705 465"/>' +
+    '<path d="M815 400 L790 300"/><path d="M855 400 L895 300"/><circle cx="788" cy="290" r="16" ' + F + '/><circle cx="898" cy="290" r="16" ' + F + '/>' +
+    '<path d="M820 520 q22 18 44 0"/>' },
+  { id:'butterfly', name:'Butterfly', art:
+    '<ellipse cx="600" cy="460" rx="32" ry="150"/><circle cx="600" cy="270" r="42"/>' +
+    '<path d="M582 232 C560 165 520 145 495 158"/><path d="M618 232 C640 165 680 145 705 158"/><circle cx="492" cy="160" r="14" ' + F + '/><circle cx="708" cy="160" r="14" ' + F + '/>' +
+    '<path d="M568 400 C450 220 250 220 262 345 C272 445 420 472 568 450Z"/><path d="M632 400 C750 220 950 220 938 345 C928 445 780 472 632 450Z"/>' +
+    '<path d="M568 475 C420 485 300 565 340 655 C380 725 520 665 572 545Z"/><path d="M632 475 C780 485 900 565 860 655 C820 725 680 665 628 545Z"/>' +
+    '<circle cx="385" cy="345" r="42"/><circle cx="815" cy="345" r="42"/><circle cx="430" cy="595" r="30"/><circle cx="770" cy="595" r="30"/>' },
+  { id:'cat', name:'Cat', art:
+    ground(820, 1020) +
+    '<path d="M470 600 C420 690 420 780 440 820 H760 C780 780 780 690 730 600"/><path d="M760 800 C900 800 925 690 860 650"/>' +
+    '<path d="M380 380 C380 260 460 220 600 220 C740 220 820 260 820 380 C820 540 720 620 600 620 C480 620 380 540 380 380Z" fill="#fff"/>' +
+    '<path d="M410 300 L430 150 L530 228"/><path d="M790 300 L770 150 L670 228"/>' +
+    '<ellipse cx="520" cy="390" rx="30" ry="40"/><ellipse cx="680" cy="390" rx="30" ry="40"/><circle cx="524" cy="398" r="12" ' + F + '/><circle cx="684" cy="398" r="12" ' + F + '/>' +
+    '<path d="M580 465 H620 L600 490Z"/><path d="M600 490 q-30 40 -60 20 M600 490 q30 40 60 20"/>' +
+    '<path d="M470 480 L330 462 M470 510 L330 530 M730 480 L870 462 M730 510 L870 530"/>' },
+  { id:'teddy', name:'Teddy', art:
+    '<circle cx="465" cy="195" r="50"/><circle cx="465" cy="195" r="24"/><circle cx="735" cy="195" r="50"/><circle cx="735" cy="195" r="24"/>' +
+    '<ellipse cx="500" cy="800" rx="70" ry="45"/><ellipse cx="700" cy="800" rx="70" ry="45"/>' +
+    '<path d="M470 540 C395 560 375 650 430 670"/><path d="M730 540 C805 560 825 650 770 670"/>' +
+    '<ellipse cx="600" cy="625" rx="150" ry="170" fill="#fff"/><ellipse cx="600" cy="645" rx="80" ry="92"/>' +
+    '<circle cx="600" cy="320" r="130" fill="#fff"/>' +
+    '<ellipse cx="600" cy="372" rx="58" ry="44"/><ellipse cx="600" cy="352" rx="20" ry="13" ' + F + '/><path d="M600 365 V392"/>' +
+    '<circle cx="548" cy="290" r="13" ' + F + '/><circle cx="652" cy="290" r="13" ' + F + '/>' },
+  { id:'train', name:'Train', art:
+    '<path d="M60 725 H1140"/><path d="M110 755 h60 M260 755 h60 M410 755 h60 M560 755 h60 M710 755 h60 M860 755 h60 M1010 755 h60"/>' +
+    '<rect x="640" y="300" width="220" height="300" rx="10"/><path d="M615 300 H885"/><rect x="690" y="345" width="120" height="100" rx="10"/>' +
+    '<rect x="300" y="420" width="340" height="180" rx="12"/>' +
+    '<path d="M380 420 V330 H360 V300 H460 V330 H440 V420"/>' +
+    '<path d="M270 600 H880"/>' +
+    '<circle cx="390" cy="662" r="60" fill="#fff"/><circle cx="560" cy="662" r="60" fill="#fff"/><circle cx="760" cy="662" r="60" fill="#fff"/>' +
+    '<circle cx="390" cy="662" r="14" ' + F + '/><circle cx="560" cy="662" r="14" ' + F + '/><circle cx="760" cy="662" r="14" ' + F + '/>' +
+    '<circle cx="430" cy="245" r="30"/><circle cx="485" cy="180" r="40"/><circle cx="560" cy="125" r="50"/>' }
+];
+function tplSvg(t){ return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900"><g ' + G + '>' + t.art + '</g></svg>'); }
+TEMPLATES.forEach(t => t.src = tplSvg(t));
+let customTemplates = []; // [{id, name, src}] kept on this device
+
+/* ================= state ================= */
+let tool = TOOLS[0], colour = '#E8414E';
+let store = null, mode = 'local', readOnly = false, claudeDownloads = null;
+let thumbs = {};          // 'g0'..'g29' and 'v0'..'v49' -> {img, updated, by}
+let curId = null, curTpl = null, curLines = null, isNew = false;
+let dirty = false, saving = false, pendingSave = false, saveTimer = 0;
+let undo = [];
+let tidying = false;
+
+/* ================= storage: shared (Claude db or Firebase — same API shape) ================= */
+const Shared = {
+  db: null, raw: {},
+  norm(docId){ const m = /^slot(\d+)$/.exec(docId); return m ? 'g' + m[1] : docId; },
+  subscribe(cb, onErr){
+    this.db.collection('thumbs').onSnapshot(snap => {
+      const m = {}; this.raw = {};
+      snap.docs.forEach(d => { const v = d.data(); if (!v) return; const k = this.norm(d.id); this.raw[k] = d.id; m[k] = v; });
+      cb(m);
+    }, onErr);
+  },
+  async load(id){
+    const s = await this.db.doc('pictures/' + (this.raw[id] || id)).get();
+    const v = s.data ? s.data() : null; return v || null;
+  },
+  async save(id, rec, thumb){
+    const body = { img: rec.img, tpl: rec.tpl || null };
+    if (rec.lines) body.lines = rec.lines;
+    await this.db.doc('pictures/' + id).set(body);
+    await this.db.doc('thumbs/' + id).set({ img: thumb, updated: Date.now(), by: sessionId });
+    const old = this.raw[id];
+    if (old && old !== id) { try { await this.db.doc('thumbs/' + old).delete(); await this.db.doc('pictures/' + old).delete(); } catch (e) {} }
+  },
+  async remove(id){
+    const r = this.raw[id] || id;
+    await this.db.doc('thumbs/' + r).delete();
+    await this.db.doc('pictures/' + r).delete();
+  }
+};
+
+/* ================= storage: this device (IndexedDB) ================= */
+const Local = {
+  idb: null, cb: null, mem: {}, memT: {},
+  init(){
+    return new Promise(res => {
+      try {
+        const r = indexedDB.open('colouring-table-v2', 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('pics', { keyPath: 'id' }); r.result.createObjectStore('templates', { keyPath: 'id' }); };
+        r.onsuccess = () => { this.idb = r.result; res(); };
+        r.onerror = () => res();
+      } catch (e) { res(); }
+    });
+  },
+  os(name, m){ return this.idb.transaction(name, m).objectStore(name); },
+  req(fn){ return new Promise((res, rej) => { try { const q = fn(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); } catch (e) { rej(e); } }); },
+  async all(name){ if (!this.idb) return Object.values(name === 'pics' ? this.mem : this.memT); try { return await this.req(() => this.os(name, 'readonly').getAll()) || []; } catch (e) { return []; } },
+  async emit(){ const m = {}; (await this.all('pics')).forEach(r => { m[r.id] = { img: r.thumb, updated: r.updated, by: r.by }; }); if (this.cb) this.cb(m); },
+  subscribe(cb){ this.cb = cb; this.emit(); },
+  async load(id){ if (!this.idb) return this.mem[id] || null; try { return await this.req(() => this.os('pics', 'readonly').get(id)) || null; } catch (e) { return null; } },
+  async save(id, rec, thumb){
+    const row = { id, img: rec.img, tpl: rec.tpl || null, lines: rec.lines || null, thumb, updated: Date.now(), by: sessionId };
+    if (!this.idb) this.mem[id] = row; else await this.req(() => this.os('pics', 'readwrite').put(row));
+    this.emit();
+  },
+  async remove(id){ if (!this.idb) delete this.mem[id]; else { try { await this.req(() => this.os('pics', 'readwrite').delete(id)); } catch (e) {} } this.emit(); },
+  async templates(){ return (await this.all('templates')).sort((a, b) => a.added - b.added); },
+  async addTemplate(t){ if (!this.idb) this.memT[t.id] = t; else await this.req(() => this.os('templates', 'readwrite').put(t)); },
+  async removeTemplate(id){ if (!this.idb) delete this.memT[id]; else { try { await this.req(() => this.os('templates', 'readwrite').delete(id)); } catch (e) {} } }
+};
+
+/* ================= helpers ================= */
+const ids = (p, n) => Array.from({ length: n }, (_, i) => p + i);
+const GIDS = ids('g', GSLOTS), VIDS = ids('v', VSLOTS);
+const used = list => list.filter(k => thumbs[k]).length;
+const firstFree = list => list.find(k => !thumbs[k]) || null;
+function showBanner(text){ const b = $('#banner'); b.textContent = text || ''; b.hidden = !text; }
+function setStatus(text, kind){ const s = $('#status'); s.textContent = text || ''; s.className = 'status' + (kind ? ' ' + kind : ''); }
+function show(screen){ ['gallery','vault','editor'].forEach(s => $('#' + s).hidden = s !== screen); }
+function loadImg(src){ return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+
+/* ================= gallery ================= */
+function renderGallery(){
+  const grid = $('#grid');
+  grid.classList.toggle('tidying', tidying);
+  $('#tidyNote').hidden = !tidying;
+  grid.innerHTML = '';
+  $('#count').textContent = used(GIDS) + ' of ' + GSLOTS + ' spaces used' + (mode === 'shared' ? ' · shared with everyone' : '');
+  GIDS.forEach((id, i) => {
+    const t = thumbs[id];
+    const tile = document.createElement('div');
+    tile.className = 'tile' + (t ? '' : ' empty');
+    const open = document.createElement('button');
+    open.className = 'open';
+    if (t) {
+      const img = document.createElement('img'); img.src = t.img; img.alt = '';
+      tile.appendChild(img);
+      open.setAttribute('aria-label', 'Open picture ' + (i + 1));
+      open.onclick = () => { if (!tidying) openPicture(id); };
+      tile.appendChild(open);
+      if (tidying) {
+        const b = document.createElement('div'); b.className = 'badges';
+        const k = document.createElement('button'); k.className = 'badge keep'; k.setAttribute('aria-label', 'Keep picture ' + (i + 1) + ' in the vault');
+        k.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+        k.onclick = () => moveToVault(id);
+        const d = document.createElement('button'); d.className = 'badge del'; d.textContent = '×'; d.setAttribute('aria-label', 'Delete picture ' + (i + 1));
+        d.onclick = () => askDelete(id);
+        b.append(k, d); tile.appendChild(b);
+      }
+    } else {
+      open.innerHTML = '<span class="plus">+</span><span class="lbl">New page</span>';
+      open.setAttribute('aria-label', 'Start a new page');
+      if (tidying) { open.disabled = true; tile.style.opacity = .35; }
+      open.onclick = () => openChooser(id);
+      tile.appendChild(open);
+    }
+    grid.appendChild(tile);
+  });
+}
+$('#tidyBtn').onclick = () => {
+  tidying = !tidying;
+  $('#tidyBtn').classList.toggle('on', tidying);
+  $('#tidyBtn').setAttribute('aria-pressed', String(tidying));
+  $('#tidyBtn').textContent = tidying ? 'Done' : 'Tidy up';
+  renderGallery();
+};
+function clearAll(){
+  const list = GIDS.filter(k => thumbs[k]);
+  if (!list.length) { showBanner('There are no pictures to clear.'); return; }
+  askSum('Answer the sum to clear all pictures.', () => confirmBox(
+    list.length === 1 ? 'Clear the 1 picture?' : 'Clear all ' + list.length + ' pictures?',
+    (mode === 'shared' ? 'Every picture on the main page will be deleted for everyone. ' : 'Every picture on the main page will be deleted. ') + 'Pictures in the vault are kept.',
+    'Clear all', 'Keep them', async () => {
+      let failed = 0;
+      for (const k of list) { try { await store.remove(k); } catch (e) { failed++; } }
+      if (tidying) $('#tidyBtn').click();
+      showBanner(failed ? failed + ' pictures couldn’t be cleared. Check the connection and try again.' : 'All pictures cleared. Pictures in the vault are still kept.');
+    }));
+}
+$('#clearAllBtn').onclick = clearAll;
+function askDelete(id){
+  confirmBox('Delete this picture?',
+    mode === 'shared' ? 'It will be removed for everyone who uses this page.' : 'It will be removed from this device.',
+    'Delete', 'Keep it', async () => { try { await store.remove(id); } catch (e) { showBanner('That picture couldn’t be deleted. Check the connection and try again.'); } });
+}
+async function copyPicture(from, to){
+  const rec = await store.load(from);
+  if (!rec) throw new Error('missing');
+  await store.save(to, rec, thumbs[from].img);
+}
+async function moveToVault(id){
+  const to = firstFree(VIDS);
+  if (!to) { showBanner('The vault is full (50 pictures). Delete something from the vault first.'); return; }
+  try { await copyPicture(id, to); await store.remove(id); showBanner('Picture moved to the vault.'); }
+  catch (e) { showBanner('That picture couldn’t be moved. Check the connection and try again.'); }
+}
+
+/* ================= vault ================= */
+let sumAnswer = 0;
+function newSum(){
+  let a, b, txt;
+  if (Math.random() < .5) { a = 12 + Math.floor(Math.random() * 38); b = 11 + Math.floor(Math.random() * 29); sumAnswer = a + b; txt = a + ' + ' + b; }
+  else { a = 30 + Math.floor(Math.random() * 50); b = 11 + Math.floor(Math.random() * (a - 15)); sumAnswer = a - b; txt = a + ' − ' + b; }
+  $('#sum').textContent = txt + ' = ?';
+  $('#ans').value = '';
+}
+let lockThen = null;
+function askSum(text, then){ lockThen = then; $('#lockText').textContent = text; newSum(); $('#lockMsg').textContent = ''; $('#lock').hidden = false; setTimeout(() => $('#ans').focus(), 50); }
+$('#lockBtn').onclick = () => askSum('Answer the sum to open the vault.', openVault);
+$('#lockNo').onclick = () => { $('#lock').hidden = true; lockThen = null; };
+function tryUnlock(){
+  if (parseInt($('#ans').value, 10) === sumAnswer) { $('#lock').hidden = true; const f = lockThen; lockThen = null; if (f) f(); }
+  else { $('#lockMsg').textContent = 'Not quite. Try this one.'; newSum(); $('#ans').focus(); }
+}
+$('#lockYes').onclick = tryUnlock;
+$('#ans').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+function openVault(){ if (tidying) $('#tidyBtn').click(); show('vault'); renderVault(); }
+$('#vaultBack').onclick = () => { show('gallery'); renderGallery(); };
+function renderVault(){
+  const g = $('#vgrid'); g.innerHTML = '';
+  const n = used(VIDS);
+  $('#vcount').textContent = n + ' of ' + VSLOTS + ' kept';
+  if (!n) { g.innerHTML = '<div class="note">Nothing kept yet. On the main page, tap Tidy up, then the padlock on a picture to keep it here.</div>'; return; }
+  VIDS.forEach(id => {
+    const t = thumbs[id]; if (!t) return;
+    const tile = document.createElement('div'); tile.className = 'tile';
+    const img = document.createElement('img'); img.src = t.img; img.alt = ''; tile.appendChild(img);
+    const bar = document.createElement('div'); bar.className = 'vbar';
+    const r = document.createElement('button'); r.className = 'pill'; r.textContent = 'Restore';
+    r.onclick = () => restore(id);
+    const d = document.createElement('button'); d.className = 'pill danger'; d.textContent = 'Delete';
+    d.onclick = () => confirmBox('Delete from the vault?', 'This kept picture will be gone for good.', 'Delete', 'Keep it',
+      async () => { try { await store.remove(id); } catch (e) { alertVault('That picture couldn’t be deleted.'); } });
+    bar.append(r, d); tile.appendChild(bar); g.appendChild(tile);
+  });
+}
+function alertVault(text){ $('#vcount').textContent = text; }
+async function restore(id){
+  const to = firstFree(GIDS);
+  if (!to) { alertVault('All 30 spaces on the main page are full. Delete or keep one first.'); return; }
+  try { await copyPicture(id, to); alertVault('Restored to the main page. It’s still kept here too.'); }
+  catch (e) { alertVault('That picture couldn’t be restored. Check the connection.'); }
+}
+
+/* ================= template chooser ================= */
+let chooserSlot = null;
+async function openChooser(id){
+  if (readOnly) { showBanner('This page is view-only for you, so new pictures can’t be saved.'); return; }
+  chooserSlot = id;
+  customTemplates = await Local.templates();
+  const g = $('#tgrid'); g.innerHTML = '';
+  const add = (cls, html, label, fn) => { const b = document.createElement('button'); b.className = 'tpl ' + cls; b.innerHTML = html; b.setAttribute('aria-label', label); b.onclick = fn; g.appendChild(b); return b; };
+  add('blank', '<span class="cap">Blank page</span>', 'Blank page', () => startNew(null));
+  TEMPLATES.forEach(t => add('', '<img alt="" src="' + t.src + '"><span class="cap">' + t.name + '</span>', t.name, () => startNew(t.id)));
+  customTemplates.forEach(t => add('', '<img alt="" src="' + t.src + '"><span class="cap">' + t.name + '</span>', t.name, () => startNew(t.id)));
+  add('add', '<span class="plus">+</span><span class="lbl">Add your own picture to colour</span>', 'Add your own picture to colour', () => $('#fileIn').click());
+  $('#chooser').hidden = false;
+}
+$('#cClose').onclick = () => { $('#chooser').hidden = true; };
+$('#fileIn').onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const img = await loadImg(url); URL.revokeObjectURL(url);
+  if (!img) return;
+  const src = toLineArt(img);
+  const t = { id: 'c' + Date.now().toString(36), name: 'My picture', src, added: Date.now() };
+  try { await Local.addTemplate(t); } catch (err) {}
+  openChooser(chooserSlot);
+};
+// Turn a photo or scan of a colouring sheet into dark lines on a see-through page.
+function toLineArt(img){
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  const s = Math.min(W / img.width, H / img.height);
+  const w = img.width * s, h = img.height * s;
+  x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+  const d = x.getImageData(0, 0, W, H), p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const L = .299 * p[i] + .587 * p[i + 1] + .114 * p[i + 2];
+    const a = Math.max(0, Math.min(1, (190 - L) / 110));
+    p[i] = 27; p[i + 1] = 27; p[i + 2] = 31; p[i + 3] = Math.round(a * 255);
+  }
+  x.putImageData(d, 0, 0);
+  return c.toDataURL('image/png');
+}
+function tplSrc(tplId, lines){
+  if (!tplId) return null;
+  const b = TEMPLATES.find(t => t.id === tplId); if (b) return b.src;
+  const c = customTemplates.find(t => t.id === tplId); if (c) return c.src;
+  return lines || null;
+}
+
+/* ================= editor ================= */
+function buildTools(){
+  const wrap = $('#tools');
+  TOOLS.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'tool'; b.dataset.id = t.id;
+    b.innerHTML = t.svg + '<span>' + t.label + '</span>';
+    b.setAttribute('aria-label', t.label + (t.id === 'eraser' ? '' : '. Tap twice to pick a colour'));
+    let lastTap = 0;
+    // pointerup fires for every quick tap on iPad, where a fast second click can be swallowed
+    b.addEventListener('pointerup', () => {
+      const now = performance.now();
+      const twice = tool === t && now - lastTap < 500;
+      lastTap = now;
+      tool = t; syncTools();
+      if (twice && t.id !== 'eraser') { lastTap = 0; openPicker(); }
+    });
+    b.addEventListener('dblclick', e => { e.preventDefault(); if (t.id !== 'eraser') openPicker(); });
+    b.addEventListener('click', e => { if (e.detail === 0) { tool = t; syncTools(); } }); // keyboard
+    wrap.appendChild(b);
+  });
+  const cb = document.createElement('button');
+  cb.className = 'tool colourBtn'; cb.setAttribute('aria-label', 'Pick a colour');
+  cb.innerHTML = '<span class="dot"></span><span>Colour</span>';
+  cb.onclick = openPicker;
+  wrap.appendChild(cb);
+  const cw = $('#colours');
+  COLOURS.forEach(([name, hex]) => {
+    const b = document.createElement('button');
+    b.className = 'sw'; b.style.background = hex; b.dataset.hex = hex;
+    b.setAttribute('aria-label', name);
+    b.onclick = () => { if (pickerSettling()) return; colour = hex; if (tool.id === 'eraser') tool = TOOLS[0]; syncTools(); closePicker(); };
+    cw.appendChild(b);
+  });
+  $('#pClose').onclick = closePicker;
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('#picker').hidden) closePicker();
+    else if (!$('#chooser').hidden) $('#chooser').hidden = true;
+    else if (!$('#lock').hidden) $('#lock').hidden = true;
+  });
+  syncTools();
+}
+function syncTools(){
+  document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === tool.id)));
+  document.querySelectorAll('.sw').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hex === colour)));
+  $('#tools').style.setProperty('--cur', colour);
+}
+// The tap that opens the picker also sends a click a moment later, which would land on
+// whatever colour sits under the finger. Ignore clicks in the picker for a short moment.
+let pickerOpenedAt = 0;
+const pickerSettling = () => performance.now() - pickerOpenedAt < 450;
+function openPicker(){ if (!$('#picker').hidden) return; pickerOpenedAt = performance.now(); $('#picker').hidden = false; const c = document.querySelector('.sw[aria-pressed="true"]'); if (c) c.focus({ preventScroll: true }); }
+function closePicker(){ if (pickerSettling()) return; $('#picker').hidden = true; }
+
+function fitCanvas(){
+  const st = $('#stage');
+  const sw = st.clientWidth, sh = st.clientHeight - 10;
+  if (sw <= 0 || sh <= 0) return;
+  const s = Math.min((sw - 8) / W, (sh - 8) / H);
+  $('#paper').style.width = Math.floor(W * s + 8) + 'px';
+  $('#paper').style.height = Math.floor(H * s + 8) + 'px';
+}
+new ResizeObserver(fitCanvas).observe($('#stage'));
+function blank(){ ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+async function setLines(src){
+  lctx.clearRect(0, 0, W, H);
+  const img = await loadImg(src);
+  if (img) lctx.drawImage(img, 0, 0, W, H);
+}
+
+async function startNew(tplId){
+  $('#chooser').hidden = true;
+  curId = chooserSlot; isNew = true; curTpl = tplId;
+  curLines = tplId && tplId.startsWith('c') ? tplSrc(tplId) : null;
+  dirty = false; undo = []; updateUndo();
+  show('editor'); blank(); fitCanvas();
+  await setLines(tplSrc(tplId));
+  setStatus('Tap a tool twice to change colour');
+}
+async function openPicture(id){
+  curId = id; isNew = false; dirty = false; undo = []; updateUndo();
+  show('editor'); blank(); lctx.clearRect(0, 0, W, H); fitCanvas();
+  setStatus('Opening…');
+  try {
+    if (!customTemplates.length) customTemplates = await Local.templates();
+    const rec = await store.load(id);
+    curTpl = rec ? rec.tpl || null : null;
+    curLines = rec ? rec.lines || null : null;
+    const img = rec ? await loadImg(rec.img) : null;
+    if (img) ctx.drawImage(img, 0, 0, W, H);
+    await setLines(tplSrc(curTpl, curLines));
+    setStatus('');
+  } catch (e) { setStatus('Couldn’t open this picture', 'err'); }
+}
+$('#homeBtn').onclick = async () => {
+  clearTimeout(saveTimer);
+  if (dirty) await saveNow();
+  show('gallery'); renderGallery();
+};
+
+/* ---------- undo / reset ---------- */
+function pushUndo(){ try { undo.push(ctx.getImageData(0, 0, W, H)); if (undo.length > 10) undo.shift(); } catch (e) {} updateUndo(); }
+function updateUndo(){ $('#undoBtn').disabled = undo.length === 0; }
+$('#undoBtn').onclick = () => { const d = undo.pop(); if (d) { ctx.putImageData(d, 0, 0); markDirty(); } updateUndo(); };
+$('#resetBtn').onclick = () => confirmBox('Start this picture again?', 'All the colouring on this page will be cleared. You can still tap Undo afterwards.',
+  'Clear it', 'Keep drawing', () => { pushUndo(); blank(); markDirty(); });
+
+/* ---------- drawing ---------- */
+let pid = null, last = null, lastMid = null, sprayPt = null, raf = 0;
+function pt(e){ const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+function paintColour(){ return tool.id === 'eraser' ? '#FFFFFF' : colour; }
+function dot(p){ ctx.beginPath(); ctx.fillStyle = paintColour(); ctx.arc(p.x, p.y, tool.size / 2, 0, Math.PI * 2); ctx.fill(); }
+function segment(p){
+  const mid = { x: (last.x + p.x) / 2, y: (last.y + p.y) / 2 };
+  ctx.beginPath();
+  ctx.strokeStyle = paintColour(); ctx.lineWidth = tool.size; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.moveTo(lastMid.x, lastMid.y); ctx.quadraticCurveTo(last.x, last.y, mid.x, mid.y); ctx.stroke();
+  lastMid = mid; last = p;
+}
+function sprayTick(){
+  if (pid === null || !sprayPt) return;
+  ctx.fillStyle = colour;
+  const r = tool.size;
+  for (let i = 0; i < 34; i++) { const a = Math.random() * Math.PI * 2, d = r * Math.sqrt(Math.random()); ctx.fillRect(sprayPt.x + Math.cos(a) * d, sprayPt.y + Math.sin(a) * d, 2.2, 2.2); }
+  raf = requestAnimationFrame(sprayTick);
+}
+cv.addEventListener('pointerdown', e => {
+  if (pid !== null) return;
+  if (readOnly) { setStatus('This page is view-only for you', 'err'); return; }
+  e.preventDefault(); pid = e.pointerId;
+  try { cv.setPointerCapture(pid); } catch (_) {}
+  pushUndo();
+  const p = pt(e);
+  if (tool.id === 'spray') { sprayPt = p; sprayTick(); } else { last = p; lastMid = p; dot(p); }
+});
+cv.addEventListener('pointermove', e => {
+  if (e.pointerId !== pid) return;
+  e.preventDefault();
+  const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  for (const ev of (list.length ? list : [e])) { const p = pt(ev); if (tool.id === 'spray') sprayPt = p; else segment(p); }
+});
+function endStroke(e){ if (e.pointerId !== pid) return; cancelAnimationFrame(raf); raf = 0; sprayPt = null; pid = null; last = lastMid = null; markDirty(); }
+cv.addEventListener('pointerup', endStroke);
+cv.addEventListener('pointercancel', endStroke);
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+/* ---------- saving ---------- */
+function markDirty(){ dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 1200); }
+function encodePaint(){
+  for (const q of [0.82, 0.7, 0.58, 0.45]) { const s = cv.toDataURL('image/jpeg', q); if (s.length < 200000) return s; }
+  const t = document.createElement('canvas'); t.width = 900; t.height = 675; t.getContext('2d').drawImage(cv, 0, 0, 900, 675);
+  return t.toDataURL('image/jpeg', 0.55);
+}
+function composite(w, h){
+  const t = document.createElement('canvas'); t.width = w; t.height = h;
+  const x = t.getContext('2d'); x.drawImage(cv, 0, 0, w, h); x.drawImage(lc, 0, 0, w, h);
+  return t;
+}
+async function saveNow(){
+  if (!dirty || !curId || readOnly) return;
+  if (saving) { pendingSave = true; return; }
+  if (isNew && thumbs[curId] && thumbs[curId].by !== sessionId) {
+    const free = firstFree(GIDS);
+    if (!free) { setStatus('All 30 spaces are full. Delete or keep a picture to save this one.', 'err'); return; }
+    curId = free;
+  }
+  saving = true; dirty = false; setStatus('Saving…');
+  try {
+    const rec = { img: encodePaint(), tpl: curTpl };
+    if (curLines && curLines.length < 40000) rec.lines = curLines; // small own-picture lines travel with the picture
+    await store.save(curId, rec, composite(320, 240).toDataURL('image/jpeg', 0.72));
+    isNew = false;
+    setStatus('Saved', 'ok');
+  } catch (e) {
+    dirty = true;
+    if (e && e.code === 'invalid_argument') {
+      readOnly = true;
+      setStatus('This page is view-only for you, so drawings can’t be saved', 'err');
+      showBanner('You can look at the pictures, but your access to this page doesn’t allow saving. Ask the owner for Contributor access.');
+    } else {
+      setStatus('Couldn’t save. Check the connection; it will try again.', 'err');
+      clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 5000);
+    }
+  }
+  saving = false;
+  if (pendingSave) { pendingSave = false; saveNow(); }
+}
+
+/* ---------- save a copy to the device ---------- */
+$('#downloadBtn').onclick = () => {
+  composite(W, H).toBlob(async blob => {
+    if (!blob) return;
+    const name = 'picture-' + new Date().toISOString().slice(0, 10) + '.png';
+    if (claudeDownloads) {
+      try { await claudeDownloads.save({ filename: name, data: blob }); setStatus('Saved to device', 'ok'); }
+      catch (e) { if (e && e.code === 'rate_limited') setStatus('One moment, then try again', 'err'); }
+      return;
+    }
+    try {
+      const file = new File([blob], name, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+};
+
+/* ---------- confirm box ---------- */
+function confirmBox(title, text, yes, no, onYes){
+  $('#mTitle').textContent = title; $('#mText').textContent = text;
+  $('#mYes').textContent = yes; $('#mNo').textContent = no;
+  const s = $('#scrim'); s.hidden = false; $('#mNo').focus();
+  const close = () => { s.hidden = true; $('#mYes').onclick = $('#mNo').onclick = null; };
+  $('#mNo').onclick = close;
+  $('#mYes').onclick = () => { close(); onYes(); };
+}
+
+/* ================= start ================= */
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function connectFirebase(){
+  const cfg = window.FIREBASE_CONFIG || {};
+  if (!cfg.projectId) return null;
+  try {
+    await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+    await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js');
+    window.firebase.initializeApp(cfg);
+    return window.firebase.firestore();
+  } catch (e) { return null; }
+}
+async function start(){
+  buildTools();
+  await Local.init();
+  let db = null;
+  const inClaude = window.claude && typeof window.claude.use === 'function';
+  if (inClaude) {
+    try { db = await window.claude.use('db'); } catch (e) { db = null; }
+    window.claude.use('downloads').then(d => { if (d) claudeDownloads = d; }).catch(() => {});
+  }
+  if (!db) db = await connectFirebase();
+  if (db) { Shared.db = db; store = Shared; mode = 'shared'; }
+  else {
+    store = Local; mode = 'local';
+    showBanner(inClaude
+      ? 'These pictures are saved on this device only. Sign in to Claude to share pictures with everyone.'
+      : 'These pictures are saved on this device only.');
+  }
+  const onThumbs = m => { thumbs = m; if (!$('#gallery').hidden) renderGallery(); if (!$('#vault').hidden) renderVault(); };
+  store.subscribe(onThumbs, () => showBanner('Lost touch with the shared pictures. Reload the page to see the latest ones.'));
+}
+start();
+})();
+</script>
+</body>
+</html>
