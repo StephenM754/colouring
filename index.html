@@ -29,16 +29,7 @@ window.FIREBASE_CONFIG = {
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#151C3D; --tray:#232C5C; --ink:#F4F1FF; --ink-soft:#B9C0E8; --edge:#6F7BC4;
-    --accent:#FF6B76; --muted:#2C366C; --ok:#5FD39C; --err:#FF7A85; color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#151C3D; --tray:#232C5C; --ink:#F4F1FF; --ink-soft:#B9C0E8; --edge:#6F7BC4;
-  --accent:#FF6B76; --muted:#2C366C; --ok:#5FD39C; --err:#FF7A85; color-scheme:dark;
-}
+/* Always the yellow look, even when the iPad is in dark mode. */
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{
