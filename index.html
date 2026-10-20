@@ -680,8 +680,8 @@ function renderGallery(){
     if (!t) {
       open.innerHTML = '<span class="plus">+</span><span class="lbl">Page ' + (i + 1) + '</span>';
       open.setAttribute('aria-label', 'Start a new picture on page ' + (i + 1));
-      open.disabled = tidying;
-      open.onclick = () => openChooser(id);
+      // Tapping a blank page while tidying leaves Tidy up and starts that page.
+      open.onclick = () => { if (tidying) $('#tidyBtn').click(); openChooser(id); };
       tile.appendChild(open); grid.appendChild(tile);
       return;
     }
