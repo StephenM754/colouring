@@ -646,7 +646,10 @@ const GIDS = ids('g', GSLOTS), VIDS = ids('v', VSLOTS);
 const used = list => list.filter(k => thumbs[k]).length;
 const firstFree = list => list.find(k => !thumbs[k]) || null;
 // action: optional { label, fn } shown as a button after the text, e.g. Undo
-function showBanner(text, action){
+// Messages go away on their own (longer when they offer Undo). A standing note, such as the
+// iPhone Home Screen tip, uses stay = true and comes back once a passing message has gone.
+let standingNote = '', bannerTimer = 0;
+function showBanner(text, action, stay){
   const b = $('#banner'); b.textContent = text || ''; b.hidden = !text;
   b.classList.toggle('withAction', !!action);
   if (text && action) {
@@ -654,6 +657,9 @@ function showBanner(text, action){
     btn.onclick = () => { btn.disabled = true; action.fn(); };
     b.appendChild(btn);
   }
+  clearTimeout(bannerTimer);
+  if (stay) standingNote = text || '';
+  else if (text) bannerTimer = setTimeout(() => showBanner(standingNote, null, true), action ? 8000 : 4000);
 }
 function setStatus(text, kind){ const s = $('#status'); s.textContent = text || ''; s.className = 'status' + (kind ? ' ' + kind : ''); }
 function show(screen){ ['gallery','vault','editor'].forEach(s => $('#' + s).hidden = s !== screen); }
@@ -1228,10 +1234,10 @@ async function start(){
     store = Local; mode = 'local';
     showBanner(inClaude
       ? 'These pictures are saved on this device only. Sign in to Claude to share pictures with everyone.'
-      : 'These pictures are saved on this device only.');
+      : 'These pictures are saved on this device only.', null, true);
   }
   // iPhone Safari can't go full screen from a web page; the Home Screen icon can.
-  if (/iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone) showBanner('Tip: for full screen, tap Share, then “Add to Home Screen”, and open Colouring from there.');
+  if (/iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone) showBanner('Tip: for full screen, tap Share, then “Add to Home Screen”, and open Colouring from there.', null, true);
   const onThumbs = m => { thumbs = m; if (!$('#gallery').hidden) renderGallery(); if (!$('#vault').hidden) renderVault(); };
   store.subscribe(onThumbs, () => showBanner('Lost touch with the shared pictures. Reload the page to see the latest ones.'));
 }
