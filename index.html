@@ -287,7 +287,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 
 <script>
 (function(){
-const W = 1200, H = 900, GSLOTS = 30, VSLOTS = 50;
+const W = 1200, H = 900, GSLOTS = 30, VSLOTS = 60;
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), lc = $('#lc');
 const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -569,7 +569,7 @@ async function copyPicture(from, to, thumb){
 }
 function moveToVault(id){
   const to = firstFree(VIDS);
-  if (!to) { showBanner('The vault is full (50 pictures). Delete something from the vault first.'); return; }
+  if (!to) { noticeBox('The vault is full', 'It holds ' + VSLOTS + ' pictures. Open the vault and delete one you don’t need, then try again.'); return; }
   confirmBox('Keep this picture in the vault?', 'It will leave the main page and go into the grown-ups’ vault.',
     'Keep it safe', 'Not now', async () => {
       const thumb = thumbs[id].img;
@@ -896,11 +896,14 @@ $('#downloadBtn').onclick = () => {
 function confirmBox(title, text, yes, no, onYes){
   $('#mTitle').textContent = title; $('#mText').textContent = text;
   $('#mYes').textContent = yes; $('#mNo').textContent = no;
+  $('#mYes').hidden = !onYes;
   const s = $('#scrim'); s.hidden = false; $('#mNo').focus();
   const close = () => { s.hidden = true; $('#mYes').onclick = $('#mNo').onclick = null; };
   $('#mNo').onclick = close;
   $('#mYes').onclick = () => { close(); onYes(); };
 }
+// A message with a single OK button.
+function noticeBox(title, text){ confirmBox(title, text, '', 'OK', null); }
 
 /* ================= start ================= */
 function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
