@@ -107,7 +107,6 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 #grid .tile.empty .plus{font-size:2rem}
 #grid .tile.empty .lbl{font-size:.9rem}
 #grid .tile.empty .open:disabled{opacity:.45;cursor:default}
-.finishing{pointer-events:none}
 .pill{white-space:nowrap}
 /* Short landscape phones: a compact header leaves the height for the cards. */
 @media (orientation: landscape) and (max-height: 500px){
@@ -124,37 +123,122 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 .note{padding:20px 4px;color:var(--ink-soft);font-size:1.1rem;max-width:60ch;line-height:1.45}
 
 /* ---------- editor ---------- */
-.topbar{display:flex;align-items:center;gap:10px;padding:12px 0}
-.spacer{flex:1}
-.tbtn{flex:none;display:flex;align-items:center;gap:8px;height:56px;padding:0 18px;border-radius:18px;
-  border:3px solid var(--edge);background:var(--tray);box-shadow:0 4px 0 var(--edge);font-weight:600;font-size:1.05rem}
-.tbtn svg{width:26px;height:26px;flex:none}
-.tbtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
-.tbtn:disabled{opacity:.45;cursor:default}
-.status{min-width:0;font-size:1rem;line-height:1.2;color:var(--ink-soft);font-weight:500;padding-left:4px}
+/* Every editor control is placed straight onto the editor grid (the rails use display:contents),
+   so landscape and portrait can arrange the same buttons differently. */
+#editor{display:grid;position:relative;--cur:#E8414E}
+#editor[hidden]{display:none}
+.rail{display:contents}
+.status{min-width:0;font-size:1rem;line-height:1.2;color:var(--ink-soft);font-weight:500}
 .status.err{color:var(--err)}
 .status.ok{color:var(--ok)}
-.workspace{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr;gap:16px;padding-bottom:14px}
-.tools{display:flex;flex-direction:column;gap:12px;justify-content:center}
-.tool{width:80px;height:80px;border-radius:22px;border:3px solid var(--edge);background:var(--tray);
-  box-shadow:0 4px 0 var(--edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px}
-.tool svg{width:44px;height:44px}
-.tool span{font-size:.8rem;font-weight:600}
+.tool{border:3px solid var(--edge);background:var(--tray);color:var(--ink);box-shadow:0 4px 0 var(--edge);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0}
+.tool span{font-size:.75rem;font-weight:600}
 .tool[aria-pressed="true"]{background:var(--muted);border-width:4px;transform:translateY(-3px);box-shadow:0 7px 0 var(--edge)}
-.colourBtn .dot{width:40px;height:40px;border-radius:50%;background:var(--cur);border:3px solid currentColor}
+.colourBtn .dot{border-radius:50%;background:var(--cur);border:3px solid currentColor}
+/* Exit and Pause: plain round buttons in the top corners. */
+.roundBtn{border-radius:50%;border:3px solid var(--edge);background:var(--tray);color:var(--ink);box-shadow:0 4px 0 var(--edge);
+  display:flex;align-items:center;justify-content:center;padding:0}
+.roundBtn svg{width:52%;height:52%}
+/* Undo and the tick: big round buttons in the bottom corners. Same colours in both themes. */
+.bigRound{border-radius:50%;border:4px solid var(--edge);box-shadow:0 5px 0 var(--edge);
+  display:flex;align-items:center;justify-content:center;padding:0;z-index:3}
+.bigRound svg{width:60%;height:60%}
+.undoBtn{background:#3DB8F5}
+.tickBtn{background:#7B4FD6}
+.tool:active,.roundBtn:active,.bigRound:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.bigRound:disabled{opacity:.5;cursor:default}
 .tidybar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;max-width:none}
-.stage{position:relative;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center}
+.stage{grid-area:stage;position:relative;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center}
 .paper{position:relative;background:var(--paper);border:4px solid var(--edge);border-radius:20px;
   box-shadow:0 7px 0 var(--edge);overflow:hidden}
 .paper canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #cv{touch-action:none;cursor:crosshair}
 #lc{pointer-events:none}
-/* The purple "finished" tick: saves the picture and cheers. Same colours in both themes. */
-.tickBtn{flex:none;width:84px;height:84px;border-radius:50%;background:#7B4FD6;border:4px solid var(--edge);
-  box-shadow:0 5px 0 var(--edge);display:flex;align-items:center;justify-content:center;padding:0;z-index:3}
-.tickBtn svg{width:62%;height:62%}
-.tickBtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 var(--edge)}
-.tickBtn:disabled{opacity:.6;cursor:default}
+#homeBtn{grid-area:exit} #pauseBtn{grid-area:pause} #undoBtn{grid-area:undo} #tickBtn{grid-area:tick}
+.tool[data-id="eraser"]{grid-area:rub} .tool[data-id="spray"]{grid-area:spray}
+.tool[data-id="marker"]{grid-area:marker} .tool[data-id="pencil"]{grid-area:pencil} .colourBtn{grid-area:colour}
+#editor button{place-self:center}
+
+/* Landscape (like the reference): left rail = Exit, Rubber, Spray, gap, Undo;
+   right rail = Pause, Marker, Pencil, Colours, Tick. Five equal rows always fit the height. */
+@media (orientation: landscape){
+  #editor{
+    --rb:clamp(40px, calc((100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px) / 5 - 12px), 84px);
+    --rb:clamp(40px, calc((100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px) / 5 - 12px), 84px);
+    grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:repeat(5,minmax(0,1fr));
+    grid-template-areas:"exit stage pause" "rub stage marker" "spray stage pencil" ". stage colour" "undo stage tick";
+    column-gap:14px;padding-block:6px;
+  }
+  .tool{width:var(--rb);height:var(--rb);border-radius:calc(var(--rb) * .28)}
+  .tool svg{width:calc(var(--rb) * .56);height:calc(var(--rb) * .56)}
+  .colourBtn .dot{width:calc(var(--rb) * .5);height:calc(var(--rb) * .5)}
+  .tool[aria-pressed="true"]{transform:none;box-shadow:0 4px 0 var(--edge)}
+  .railL .tool[aria-pressed="true"]{transform:translateX(4px)}
+  .railR .tool[aria-pressed="true"]{transform:translateX(-4px)}
+  .tool span:not(.dot){display:none}
+  .roundBtn{width:calc(var(--rb) * .9);height:calc(var(--rb) * .9)}
+  .bigRound{width:calc(var(--rb) * 1.12);height:calc(var(--rb) * 1.12)}
+  .status{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;
+    background:var(--tray);border:2px solid var(--edge);border-radius:999px;padding:2px 12px;font-size:.85rem;white-space:nowrap}
+  .status:empty{display:none}
+}
+/* Taller landscape screens (iPad, desktop) have room for the tool names. */
+@media (orientation: landscape) and (min-height: 640px){
+  .tool span:not(.dot){display:block}
+  .tool svg{width:calc(var(--rb) * .48);height:calc(var(--rb) * .48)}
+}
+
+/* Portrait: Exit and Pause along the top, the page, Undo and Tick in the bottom corners,
+   then the five tools in a row, sized to fit the width. */
+@media (orientation: portrait){
+  #editor{
+    --ts:min(76px, calc((100vw - 28px - 40px) / 5));
+    grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"exit status status status pause" "stage stage stage stage stage" "undo . . . tick" "rub spray marker pencil colour";
+    column-gap:10px;row-gap:12px;padding-block:12px;
+  }
+  .status{grid-area:status;align-self:center;text-align:center;font-size:.9rem}
+  .tool{width:var(--ts);height:var(--ts);border-radius:calc(var(--ts) * .28)}
+  .tool svg{width:calc(var(--ts) * .55);height:calc(var(--ts) * .55)}
+  .colourBtn .dot{width:calc(var(--ts) * .5);height:calc(var(--ts) * .5)}
+  .roundBtn{width:min(60px, var(--ts));height:min(60px, var(--ts))}
+  .bigRound{width:min(84px, calc(var(--ts) * 1.1));height:min(84px, calc(var(--ts) * 1.1))}
+  #undoBtn{justify-self:start} #tickBtn{justify-self:end} #homeBtn{justify-self:start} #pauseBtn{justify-self:end}
+}
+@media (orientation: portrait) and (max-width: 500px){
+  .tool span:not(.dot){display:none}
+}
+
+/* Pause: hides the picture and offers Play and Restart, plus small grown-up extras. */
+.pause{align-items:center;justify-content:center;gap:clamp(16px,4vh,36px);text-align:center}
+.pause h2{margin:0;font-size:clamp(1.8rem,5vw,3rem);font-weight:700}
+.pz-main{display:flex;gap:clamp(20px,6vw,64px);flex-wrap:wrap;justify-content:center}
+.pzBig{display:flex;flex-direction:column;align-items:center;gap:10px;background:none;border:0;padding:0;font-weight:700;font-size:1.3rem;color:var(--ink)}
+.pzBig .disc{width:clamp(96px,22vmin,160px);height:clamp(96px,22vmin,160px);border-radius:50%;border:4px solid var(--edge);
+  box-shadow:0 6px 0 var(--edge);display:flex;align-items:center;justify-content:center}
+.pzBig .disc svg{width:55%;height:55%}
+.pzBig.play .disc{background:#2EA84F}
+.pzBig.restart .disc{background:#FF8A1F}
+.pzBig.back .disc{background:#3DB8F5}
+.pzBig.device .disc{background:#2EA84F}
+.pzBig.done .disc{background:#7B4FD6}
+/* Finished screen: the picture as big as the space allows, buttons underneath. */
+.finish{gap:clamp(8px,2vh,20px)}
+.finishImg{flex:1 1 0;min-height:0;max-width:100%;object-fit:contain;border:4px solid var(--edge);border-radius:18px;background:#fff;box-shadow:0 6px 0 var(--edge)}
+.finish .msg{margin:0;min-height:0}
+.finish .pz-main{flex-wrap:nowrap;gap:clamp(10px,4vw,48px);width:100%;max-width:640px}
+.finish .pzBig{flex:1 1 0;min-width:0;text-align:center;line-height:1.15}
+.finish .msg:empty{display:none}
+@media (orientation: landscape) and (max-height: 500px){
+  .pzBig{font-size:1rem;gap:4px}
+  .pzBig .disc{width:clamp(56px,17vmin,96px);height:clamp(56px,17vmin,96px)}
+  .pause h2{font-size:1.5rem}
+}
+.pzBig:active .disc{transform:translateY(4px);box-shadow:0 2px 0 var(--edge)}
+.pz-extra{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.pz-extra .pill{font-size:.9rem;padding:8px 16px}
+/* The cheer that pops up on the tick and on Restart. */
 .cheer{position:fixed;left:50%;top:50%;z-index:30;pointer-events:none;transform:translate(-50%,-50%);
   font-size:clamp(3rem,11vw,7rem);font-weight:700;color:#FF8A1F;white-space:nowrap;
   -webkit-text-stroke:3px #4E2A9A;paint-order:stroke fill;text-shadow:0 6px 0 #4E2A9A}
@@ -162,69 +246,6 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 @keyframes cheerPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}15%{transform:translate(-50%,-50%) scale(1.12);opacity:1}
   25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
 @media (prefers-reduced-motion: reduce){.cheer.pop{animation:none}}
-#fsBtn .exit{display:none}
-.fs #fsBtn .enter{display:none}
-.fs #fsBtn .exit{display:block}
-
-/* Portrait: actions along the top, tools in a row underneath, sized to fit the width. */
-@media (orientation: portrait){
-  .workspace{grid-template-columns:1fr;grid-template-rows:1fr auto;gap:12px}
-  .stage{order:1}
-  .tools{order:2;flex-direction:row;justify-content:center;gap:10px}
-  #editor{--ts:min(76px, calc((100vw - 28px - 40px) / 5));position:relative}
-  .tool{width:var(--ts);height:var(--ts);border-radius:calc(var(--ts) * .28)}
-  .tool svg{width:calc(var(--ts) * .55);height:calc(var(--ts) * .55)}
-  .colourBtn .dot{width:calc(var(--ts) * .5);height:calc(var(--ts) * .5)}
-  .tbtn .txt{display:none}
-  .tbtn{width:56px;padding:0;justify-content:center}
-  #fsBtn{display:none !important}
-  /* Tick floats bottom right, just above the tool row, in the empty space under the page. */
-  .tickBtn{position:absolute;right:max(14px, env(safe-area-inset-right,0px));bottom:calc(var(--ts) + 36px);width:min(84px, calc(var(--ts) * 1.1));height:min(84px, calc(var(--ts) * 1.1))}
-}
-@media (orientation: portrait) and (max-width: 500px){
-  .tool span:not(.dot){display:none}
-  .topbar{gap:8px}
-  .status{font-size:.85rem}
-  .tbtn{width:50px;height:50px;border-radius:16px}
-}
-
-/* Landscape: no top bar. Tools are a rail locked to the left, actions a rail locked to the right,
-   and the drawing page takes all the height. Button size comes from the screen height so both
-   rails (5 buttons each) always fit. */
-@media (orientation: landscape){
-  #editor{
-    --rb:clamp(40px, calc((100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 6), 84px);
-    --rb:clamp(40px, calc((100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 6), 84px);
-    display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:1fr repeat(5,auto) 1fr;
-    /* --rb: right rail is 5 buttons + the tick, with 6 row gaps (8px) and 12px padding, and must fit the height */
-    column-gap:12px;row-gap:8px;padding-block:6px;position:relative;
-  }
-  #editor[hidden]{display:none}
-  .topbar,.workspace{display:contents}
-  .spacer{display:none}
-  .tools{grid-column:1;grid-row:1 / -1;flex-direction:column;justify-content:center;gap:8px}
-  .stage{grid-column:2;grid-row:1 / -1}
-  #homeBtn{grid-column:3;grid-row:2}
-  #undoBtn{grid-column:3;grid-row:3}
-  #resetBtn{grid-column:3;grid-row:4}
-  #downloadBtn{grid-column:3;grid-row:5}
-  #fsBtn{grid-column:3;grid-row:6}
-  .tickBtn{grid-column:3;grid-row:7;align-self:end;width:var(--rb);height:var(--rb)}
-  .tool,.tbtn{width:var(--rb);height:var(--rb);border-radius:calc(var(--rb) * .28);padding:0;justify-content:center}
-  .tool svg{width:calc(var(--rb) * .56);height:calc(var(--rb) * .56)}
-  .tbtn svg{width:calc(var(--rb) * .42);height:calc(var(--rb) * .42)}
-  .colourBtn .dot{width:calc(var(--rb) * .5);height:calc(var(--rb) * .5)}
-  .tool[aria-pressed="true"]{transform:translateX(4px);box-shadow:0 4px 0 var(--edge)}
-  .tbtn .txt,.tool span:not(.dot){display:none}
-  .status{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;
-    background:var(--tray);border:2px solid var(--edge);border-radius:999px;padding:2px 12px;font-size:.85rem;white-space:nowrap}
-  .status:empty{display:none}
-}
-/* Taller landscape screens (iPad, desktop) have room for the tool names. */
-@media (orientation: landscape) and (min-height: 640px){
-  .tool span:not(.dot){display:block;font-size:.75rem}
-  .tool svg{width:calc(var(--rb) * .48);height:calc(var(--rb) * .48)}
-}
 
 /* ---------- full-screen overlays ---------- */
 .overlay{position:fixed;inset:0;z-index:15;background:var(--bg);display:flex;flex-direction:column;
@@ -305,44 +326,54 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 
 <!-- ===== Editor ===== -->
 <section id="editor" class="screen" hidden>
-  <div class="topbar">
-    <button id="homeBtn" class="tbtn" aria-label="Back to all pictures">
-      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
-      <span class="txt">All pictures</span>
+  <div class="rail railL" id="railL" role="toolbar" aria-label="Exit, rubber, spray and undo">
+    <button id="homeBtn" class="roundBtn" aria-label="Back to all pictures">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H13"/><path d="M10 12h10"/><path d="M16.5 8.5 20 12l-3.5 3.5"/></svg>
     </button>
-    <span id="status" class="status" role="status"></span>
-    <div class="spacer"></div>
-    <button id="undoBtn" class="tbtn" aria-label="Undo" disabled>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
-      <span class="txt">Undo</span>
-    </button>
-    <button id="resetBtn" class="tbtn" aria-label="Start again">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-      <span class="txt">Start again</span>
-    </button>
-    <button id="downloadBtn" class="tbtn" aria-label="Save to device">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
-      <span class="txt">Save to device</span>
-    </button>
-    <button id="fsBtn" class="tbtn" aria-label="Full screen" hidden>
-      <svg class="enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-      <svg class="exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
-      <span class="txt">Full screen</span>
+    <button id="undoBtn" class="bigRound undoBtn" aria-label="Undo" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#1E2A5A" stroke-width="5"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></g><g stroke="#FFFFFF" stroke-width="3"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></g></svg>
     </button>
   </div>
-  <div class="workspace">
-    <div class="tools" id="tools" role="toolbar" aria-label="Drawing tools"></div>
-    <div class="stage" id="stage">
-      <div class="paper" id="paper">
-        <canvas id="cv" width="1200" height="900" aria-label="Drawing page"></canvas>
-        <canvas id="lc" width="1200" height="900" aria-hidden="true"></canvas>
-      </div>
+  <div class="stage" id="stage">
+    <div class="paper" id="paper">
+      <canvas id="cv" width="1200" height="900" aria-label="Drawing page"></canvas>
+      <canvas id="lc" width="1200" height="900" aria-hidden="true"></canvas>
     </div>
   </div>
-  <button id="tickBtn" class="tickBtn" aria-label="Finished! Save my picture">
-    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#1E2A5A" stroke-width="5.4"/><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#FF8A1F" stroke-width="3.4"/></svg>
-  </button>
+  <div class="rail railR" id="railR" role="toolbar" aria-label="Pause, marker, pencil, colours and finish">
+    <button id="pauseBtn" class="roundBtn" aria-label="Pause">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4.2" height="15" rx="2"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="2"/></svg>
+    </button>
+    <button id="tickBtn" class="bigRound tickBtn" aria-label="Finished! Save my picture">
+      <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#1E2A5A" stroke-width="5.4"/><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#FF8A1F" stroke-width="3.4"/></svg>
+    </button>
+  </div>
+  <span id="status" class="status" role="status"></span>
 </section>
+
+<!-- ===== Finished ===== -->
+<div id="finishOv" class="overlay pause finish" hidden role="dialog" aria-modal="true" aria-labelledby="fzTitle">
+  <h2 id="fzTitle">Well done!</h2>
+  <img id="finishImg" class="finishImg" alt="Your picture">
+  <p id="fMsg" class="msg" role="status"></p>
+  <div class="pz-main">
+    <button id="fBack" class="pzBig back"><span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#1E2A5A" stroke-width="5"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></g><g stroke="#FFFFFF" stroke-width="3"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></g></svg></span>Back</button>
+    <button id="downloadBtn" class="pzBig device"><span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#1E2A5A" stroke-width="5"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></g><g stroke="#FFFFFF" stroke-width="3"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></g></svg></span>Save to device</button>
+    <button id="fSave" class="pzBig done"><span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#1E2A5A" stroke-width="5.4"/><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#FF8A1F" stroke-width="3.4"/></svg></span>Save</button>
+  </div>
+</div>
+
+<!-- ===== Pause ===== -->
+<div id="pauseOv" class="overlay pause" hidden role="dialog" aria-modal="true" aria-labelledby="pzTitle">
+  <h2 id="pzTitle">Paused</h2>
+  <div class="pz-main">
+    <button id="playBtn" class="pzBig play"><span class="disc"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="#FFFFFF" stroke="#1E2A5A" stroke-width="1.6" stroke-linejoin="round"/></svg></span>Play</button>
+    <button id="restartBtn" class="pzBig restart"><span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#1E2A5A" stroke-width="4.6"><path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3L3.5 8.3"/><path d="M3.5 3.5v4.8h4.8"/></g><g stroke="#FFFFFF" stroke-width="2.6"><path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3L3.5 8.3"/><path d="M3.5 3.5v4.8h4.8"/></g></svg></span>Restart</button>
+  </div>
+  <div class="pz-extra">
+    <button id="fsBtn" class="pill" hidden>Full screen</button>
+  </div>
+</div>
 <!-- Outside the editor so it stays on screen while the app goes back to the pictures. -->
 <div id="cheer" class="cheer" role="status" hidden></div>
 
@@ -809,9 +840,11 @@ function tplSrc(tplId, lines){
 }
 
 /* ================= editor ================= */
+// Rubber and Spray sit in the left rail above Undo; Marker, Pencil and Colours in the right rail above the tick.
+const TOOL_PLACES = { eraser: ['#railL', '#undoBtn'], spray: ['#railL', '#undoBtn'], marker: ['#railR', '#tickBtn'], pencil: ['#railR', '#tickBtn'] };
+const TOOL_ORDER = ['eraser', 'spray', 'marker', 'pencil'];
 function buildTools(){
-  const wrap = $('#tools');
-  TOOLS.forEach(t => {
+  TOOL_ORDER.map(id => TOOLS.find(t => t.id === id)).forEach(t => {
     const b = document.createElement('button');
     b.className = 'tool'; b.dataset.id = t.id;
     b.innerHTML = t.svg + '<span>' + t.label + '</span>';
@@ -825,13 +858,14 @@ function buildTools(){
     };
     b.addEventListener('pointerup', choose);
     b.addEventListener('click', e => { if (e.detail === 0) choose(); }); // keyboard
-    wrap.appendChild(b);
+    const [rail, before] = TOOL_PLACES[t.id];
+    $(rail).insertBefore(b, $(before));
   });
   const cb = document.createElement('button');
   cb.className = 'tool colourBtn'; cb.setAttribute('aria-label', 'Pick a colour');
   cb.innerHTML = '<span class="dot"></span><span>Colour</span>';
   cb.onclick = openPicker;
-  wrap.appendChild(cb);
+  $('#railR').insertBefore(cb, $('#tickBtn'));
   const cw = $('#colours');
   COLOURS.forEach(([name, hex]) => {
     const b = document.createElement('button');
@@ -846,13 +880,15 @@ function buildTools(){
     if (!$('#picker').hidden) closePicker();
     else if (!$('#chooser').hidden) $('#chooser').hidden = true;
     else if (!$('#lock').hidden) $('#lock').hidden = true;
+    else if (!$('#pauseOv').hidden) $('#pauseOv').hidden = true;
+    else if (!$('#finishOv').hidden) $('#finishOv').hidden = true;
   });
   syncTools();
 }
 function syncTools(){
   document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === tool.id)));
   document.querySelectorAll('.sw').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hex === colour)));
-  $('#tools').style.setProperty('--cur', colour);
+  $('#editor').style.setProperty('--cur', colour);
 }
 // The tap that opens the picker also sends a click a moment later, which would land on
 // whatever colour sits under the finger. Ignore clicks in the picker for a short moment.
@@ -915,6 +951,7 @@ async function openPicture(id){
 // Nothing is saved until the tick is tapped. Leaving with changes throws them away,
 // so the picture goes back to how it was last saved.
 function leaveEditor(){
+  $('#pauseOv').hidden = true; $('#finishOv').hidden = true;
   dirty = false; show('gallery'); renderGallery();
   // Bring the page just worked on into view.
   const tile = curId && $('#grid .tile[data-id="' + curId + '"]');
@@ -933,8 +970,11 @@ window.addEventListener('beforeunload', e => { if (dirty && !$('#editor').hidden
 function pushUndo(){ try { undo.push(ctx.getImageData(0, 0, W, H)); if (undo.length > 10) undo.shift(); } catch (e) {} updateUndo(); }
 function updateUndo(){ $('#undoBtn').disabled = undo.length === 0; }
 $('#undoBtn').onclick = () => { const d = undo.pop(); if (d) { ctx.putImageData(d, 0, 0); markDirty(); } updateUndo(); };
-$('#resetBtn').onclick = () => confirmBox('Start this picture again?', 'All the colouring on this page will be cleared. You can still tap Undo afterwards.',
-  'Clear it', 'Keep drawing', () => { pushUndo(); blank(); markDirty(); });
+/* ---------- pause: hides the picture; Play goes back, Restart clears it (after asking) ---------- */
+$('#pauseBtn').onclick = () => { $('#pauseOv').hidden = false; $('#playBtn').focus(); };
+$('#playBtn').onclick = () => { $('#pauseOv').hidden = true; };
+$('#restartBtn').onclick = () => confirmBox('Restart this picture?', 'All the colouring on this page will be cleared. You can still tap Undo afterwards.',
+  'Restart', 'Keep it', () => { pushUndo(); blank(); markDirty(); $('#pauseOv').hidden = true; cheer('Restart!', { pitch: 1.9, rate: 1.2 }); });
 
 /* ---------- drawing ---------- */
 let pid = null, last = null, lastMid = null, sprayPt = null, raf = 0;
@@ -1025,7 +1065,7 @@ async function saveNow(){
 }
 
 /* ---------- the tick: save and cheer ---------- */
-const CHEERS = ['Excellent!', 'Awesome!'];
+const CHEERS = ['Excellent!', 'Awesome!', 'Well done!'];
 let cheerIdx = Math.floor(Math.random() * CHEERS.length), cheerTimer = 0, voice = null;
 // A bright American voice: the best-known lively US voices first (iPad/iPhone, Android/Chrome, Windows),
 // then any US English voice, then any English voice.
@@ -1039,30 +1079,45 @@ function pickVoice(){
   voice = voice || us[0] || vs.find(v => /^en/i.test(v.lang)) || null;
 }
 if (window.speechSynthesis) { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); }
-function cheer(){
-  cheerIdx = (cheerIdx + 1) % CHEERS.length;
-  const word = CHEERS[cheerIdx];
+// Pops a word up on screen and says it. With no word, alternates "Excellent!" and "Awesome!".
+// A different cheer from last time, picked at random.
+function nextCheer(){
+  let i; do { i = Math.floor(Math.random() * CHEERS.length); } while (i === cheerIdx && CHEERS.length > 1);
+  cheerIdx = i; return CHEERS[i];
+}
+// Pops a word up on screen and says it.
+function cheer(word, opts){
   const el = $('#cheer');
   el.textContent = word; el.hidden = false;
   el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
   clearTimeout(cheerTimer); cheerTimer = setTimeout(() => { el.hidden = true; }, 1700);
+  say(word, opts);
+}
+function say(word, opts){
+  opts = opts || {};
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(word);
     if (voice) u.voice = voice;
-    u.lang = voice ? voice.lang : 'en-US'; u.rate = 1.1; u.pitch = 1.7; u.volume = 1;
+    u.lang = voice ? voice.lang : 'en-US'; u.rate = opts.rate || 1.1; u.pitch = opts.pitch || 1.7; u.volume = 1;
     speechSynthesis.speak(u);
   } catch (e) {}
 }
-let finishing = false;
-$('#tickBtn').onclick = async () => {
+/* ---------- finished: the tick opens a screen with Back, Save to device, and a tick that saves ---------- */
+$('#tickBtn').onclick = () => {
   if (readOnly) { setStatus('This page is view-only for you', 'err'); return; }
-  if (finishing) return;
-  if ((dirty || isNew) && !(await saveNow())) return; // a new page saves even if it's still blank
-  cheer();
-  // Back to the pictures once the cheer has had its moment; no drawing in between.
-  finishing = true; $('#editor').classList.add('finishing');
-  setTimeout(() => { finishing = false; $('#editor').classList.remove('finishing'); leaveEditor(); }, 1400);
+  const word = nextCheer();
+  $('#fzTitle').textContent = word;
+  $('#fMsg').textContent = '';
+  $('#finishImg').src = composite(W, H).toDataURL('image/jpeg', 0.85);
+  $('#finishOv').hidden = false; $('#fSave').focus();
+  say(word);
+};
+$('#fBack').onclick = () => { $('#finishOv').hidden = true; };
+$('#fSave').onclick = async () => {
+  if ((dirty || isNew) && !(await saveNow())) { $('#fMsg').textContent = $('#status').textContent; return; } // a new page saves even if blank
+  $('#finishOv').hidden = true;
+  leaveEditor();
 };
 
 /* ---------- full screen (Android Chrome, iPad; iPhone Safari has no full screen for pages) ---------- */
@@ -1073,7 +1128,7 @@ $('#tickBtn').onclick = async () => {
   const current = () => document.fullscreenElement || document.webkitFullscreenElement;
   if (!req || !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return;
   const btn = $('#fsBtn'); btn.hidden = false;
-  const sync = () => { const on = !!current(); el.classList.toggle('fs', on); btn.setAttribute('aria-label', on ? 'Leave full screen' : 'Full screen'); };
+  const sync = () => { const on = !!current(); el.classList.toggle('fs', on); btn.textContent = on ? 'Leave full screen' : 'Full screen'; };
   document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
   btn.onclick = async () => {
     try {
