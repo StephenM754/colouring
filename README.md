@@ -4,7 +4,7 @@ A colouring app for the kids' iPads. It's one file, `index.html`, with no build 
 
 - 10 built-in pictures to colour, a blank page, or "Add your own picture" (a photo of a colouring sheet is turned into line art).
 - Pencil, marker, spray and rubber. Tap a tool twice for the 30-colour picker.
-- 30 picture spaces on the main page. "Tidy up" moves pictures into the grown-ups' vault (60 spaces, behind a sum) or deletes them.
+- 30 picture spaces on the main page. "Tidy up" lets you keep a copy of a picture in the grown-ups' vault (60 spaces, behind a sum; one copy per version of a picture) or delete it.
 - "Save to device" shares or downloads a PNG.
 
 ## Where pictures are stored

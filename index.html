@@ -190,7 +190,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
     </div>
   </header>
   <p id="banner" class="banner" hidden></p>
-  <div id="tidyNote" class="banner tidybar" hidden><span>Tap the padlock on a picture to keep it in the vault, or × to delete it.</span><button id="clearAllBtn" class="pill danger">Clear all pictures</button></div>
+  <div id="tidyNote" class="banner tidybar" hidden><span>Tap the padlock on a picture to keep a copy in the vault, or × to delete it.</span><button id="clearAllBtn" class="pill danger">Clear all pictures</button></div>
   <div id="grid" class="grid"><div class="note">Getting the pictures…</div></div>
 </section>
 
@@ -519,7 +519,7 @@ function renderGallery(){
       tile.appendChild(open);
       if (tidying) {
         const b = document.createElement('div'); b.className = 'badges';
-        const k = document.createElement('button'); k.className = 'badge keep'; k.setAttribute('aria-label', 'Keep picture ' + (i + 1) + ' in the vault');
+        const k = document.createElement('button'); k.className = 'badge keep'; k.setAttribute('aria-label', 'Keep a copy of picture ' + (i + 1) + ' in the vault');
         k.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
         k.onclick = () => moveToVault(id);
         const d = document.createElement('button'); d.className = 'badge del'; d.textContent = '×'; d.setAttribute('aria-label', 'Delete picture ' + (i + 1));
@@ -567,24 +567,27 @@ async function copyPicture(from, to, thumb){
   if (!rec) throw new Error('missing');
   await store.save(to, rec, thumb || thumbs[from].img);
 }
+// Copies a picture into the vault; the original stays on the main page.
+// Any change to a picture makes a new thumbnail, so a matching vault thumbnail means this version is already kept.
 function moveToVault(id){
+  const thumb = thumbs[id].img;
+  if (VIDS.some(v => thumbs[v] && thumbs[v].img === thumb)) {
+    noticeBox('Already in the vault', 'This picture is already kept in the vault. Colour some more of it, then you can keep the new version too.');
+    return;
+  }
   const to = firstFree(VIDS);
   if (!to) { noticeBox('The vault is full', 'It holds ' + VSLOTS + ' pictures. Open the vault and delete one you don’t need, then try again.'); return; }
-  confirmBox('Keep this picture in the vault?', 'It will leave the main page and go into the grown-ups’ vault.',
-    'Keep it safe', 'Not now', async () => {
-      const thumb = thumbs[id].img;
+  confirmBox('Keep a copy in the vault?', 'A copy goes into the grown-ups’ vault. The picture stays here too.',
+    'Keep a copy', 'Not now', async () => {
       try {
-        await copyPicture(id, to, thumb); await store.remove(id);
-        showBanner('Picture moved to the vault.', { label: 'Undo', fn: () => undoMove(to, id, thumb) });
-      } catch (e) { showBanner('That picture couldn’t be moved. Check the connection and try again.'); }
+        await copyPicture(id, to, thumb);
+        showBanner('Copy kept in the vault.', { label: 'Undo', fn: () => undoKeep(to) });
+      } catch (e) { showBanner('That picture couldn’t be copied. Check the connection and try again.'); }
     });
 }
-// Put a just-moved picture back in its old space, or the first free one if that has been used since.
-async function undoMove(vaultId, homeId, thumb){
-  const to = thumbs[homeId] ? firstFree(GIDS) : homeId;
-  if (!to) { showBanner('The main page is full, so the picture stays in the vault.'); return; }
-  try { await copyPicture(vaultId, to, thumb); await store.remove(vaultId); showBanner('Picture put back on the main page.'); }
-  catch (e) { showBanner('That picture couldn’t be put back. It’s still safe in the vault.'); }
+async function undoKeep(vaultId){
+  try { await store.remove(vaultId); showBanner('Copy taken out of the vault.'); }
+  catch (e) { showBanner('The copy couldn’t be taken out. You can delete it in the vault.'); }
 }
 
 /* ================= vault ================= */
@@ -612,7 +615,7 @@ function renderVault(){
   const g = $('#vgrid'); g.innerHTML = '';
   const n = used(VIDS);
   $('#vcount').textContent = n + ' of ' + VSLOTS + ' kept';
-  if (!n) { g.innerHTML = '<div class="note">Nothing kept yet. On the main page, tap Tidy up, then the padlock on a picture to keep it here.</div>'; return; }
+  if (!n) { g.innerHTML = '<div class="note">Nothing kept yet. On the main page, tap Tidy up, then the padlock on a picture to keep a copy here.</div>'; return; }
   VIDS.forEach(id => {
     const t = thumbs[id]; if (!t) return;
     const tile = document.createElement('div'); tile.className = 'tile';
