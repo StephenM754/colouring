@@ -93,6 +93,31 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 .badge.del{background:#E8414E}
 .vbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;justify-content:center}
 .vbar .pill{padding:6px 14px;font-size:.92rem;box-shadow:0 3px 0 var(--edge)}
+.tile.empty .sub{font-size:.85rem;color:var(--ink-soft);padding:0 12px;text-align:center}
+/* Main page: one row of big cards that scrolls left and right. Card height fills the space under the
+   header but is capped so the next card always peeks in from the right. */
+#gallery{overflow:hidden;padding-bottom:10px}
+#grid{flex:1 1 0;min-height:0;display:flex;align-items:center;gap:20px;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x proximity;scroll-padding-inline:4px;padding:4px 4px 16px;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+#grid .tile{flex:none;width:auto;height:min(100%, 330px, calc((100vw - 90px) * .75));min-height:120px;scroll-snap-align:start}
+#grid .note{flex:none}
+/* An empty space is a blank white page waiting to be used. */
+#grid .tile.empty{background:var(--paper);border-style:solid;box-shadow:0 5px 0 var(--edge)}
+#grid .tile.empty .open{color:#8A90B0}
+#grid .tile.empty .plus{font-size:2rem}
+#grid .tile.empty .lbl{font-size:.9rem}
+#grid .tile.empty .open:disabled{opacity:.45;cursor:default}
+.finishing{pointer-events:none}
+.pill{white-space:nowrap}
+/* Short landscape phones: a compact header leaves the height for the cards. */
+@media (orientation: landscape) and (max-height: 500px){
+  .g-head{padding:8px 4px 6px;align-items:center}
+  .g-head h1{font-size:1.6rem}
+  .g-head .love{font-size:.95rem;margin-top:2px}
+  .g-head p{font-size:.85rem;margin-top:2px}
+  #gallery .banner{margin-bottom:6px;padding:6px 12px;font-size:.85rem}
+  #grid{padding-bottom:10px}
+}
 .tidying .tile:not(.empty){animation:wobble .5s ease-in-out infinite alternate}
 @keyframes wobble{from{transform:rotate(-.8deg)}to{transform:rotate(.8deg)}}
 @media (prefers-reduced-motion: reduce){.tidying .tile{animation:none !important}}
@@ -317,8 +342,9 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
   <button id="tickBtn" class="tickBtn" aria-label="Finished! Save my picture">
     <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#1E2A5A" stroke-width="5.4"/><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#FF8A1F" stroke-width="3.4"/></svg>
   </button>
-  <div id="cheer" class="cheer" role="status" hidden></div>
 </section>
+<!-- Outside the editor so it stays on screen while the app goes back to the pictures. -->
+<div id="cheer" class="cheer" role="status" hidden></div>
 
 <!-- ===== Colour picker ===== -->
 <div id="picker" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pTitle">
@@ -368,7 +394,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 
 <script>
 (function(){
-const W = 1200, H = 900, GSLOTS = 60, VSLOTS = 60;
+const W = 1200, H = 900, GSLOTS = 40, VSLOTS = 60;
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), lc = $('#lc');
 const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -580,43 +606,52 @@ function show(screen){ ['gallery','vault','editor'].forEach(s => $('#' + s).hidd
 function loadImg(src){ return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
 
 /* ================= gallery ================= */
+// Every main-page picture. Includes any saved in spaces above today's limit,
+// so lowering the limit never hides a picture.
+function galleryIds(){ return Object.keys(thumbs).filter(k => /^g\d+$/.test(k)); }
+// The main page is one row that scrolls left and right, showing every space in order:
+// pictures where something is saved, blank white pages where nothing is yet.
 function renderGallery(){
   const grid = $('#grid');
   grid.classList.toggle('tidying', tidying);
   $('#tidyNote').hidden = !tidying;
   grid.innerHTML = '';
-  $('#count').textContent = used(GIDS) + ' of ' + GSLOTS + ' spaces used' + (mode === 'shared' ? ' · shared with everyone' : '');
-  GIDS.forEach((id, i) => {
+  const n = galleryIds().length, left = Math.max(0, GSLOTS - n);
+  $('#count').textContent = left + (left === 1 ? ' blank page' : ' blank pages') + ' left of ' + GSLOTS + (mode === 'shared' ? ' · shared with everyone' : '');
+  const extra = galleryIds().filter(k => !GIDS.includes(k)).sort((a, b) => +a.slice(1) - +b.slice(1));
+  GIDS.concat(extra).forEach((id, i) => {
     const t = thumbs[id];
-    const tile = document.createElement('div');
-    tile.className = 'tile' + (t ? '' : ' empty');
-    const open = document.createElement('button');
-    open.className = 'open';
-    if (t) {
-      const img = document.createElement('img'); img.src = t.img; img.alt = '';
-      tile.appendChild(img);
-      open.setAttribute('aria-label', 'Open picture ' + (i + 1));
-      open.onclick = () => { if (!tidying) openPicture(id); };
-      tile.appendChild(open);
-      if (tidying) {
-        const b = document.createElement('div'); b.className = 'badges';
-        const k = document.createElement('button'); k.className = 'badge keep'; k.setAttribute('aria-label', 'Keep a copy of picture ' + (i + 1) + ' in the vault');
-        k.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
-        k.onclick = () => moveToVault(id);
-        const d = document.createElement('button'); d.className = 'badge del'; d.textContent = '×'; d.setAttribute('aria-label', 'Delete picture ' + (i + 1));
-        d.onclick = () => askDelete(id);
-        b.append(k, d); tile.appendChild(b);
-      }
-    } else {
-      open.innerHTML = '<span class="plus">+</span><span class="lbl">New page</span>';
-      open.setAttribute('aria-label', 'Start a new page');
-      if (tidying) { open.disabled = true; tile.style.opacity = .35; }
+    const tile = document.createElement('div'); tile.className = 'tile' + (t ? '' : ' empty'); tile.dataset.id = id;
+    const open = document.createElement('button'); open.className = 'open';
+    if (!t) {
+      open.innerHTML = '<span class="plus">+</span><span class="lbl">Page ' + (i + 1) + '</span>';
+      open.setAttribute('aria-label', 'Start a new picture on page ' + (i + 1));
+      open.disabled = tidying;
       open.onclick = () => openChooser(id);
-      tile.appendChild(open);
+      tile.appendChild(open); grid.appendChild(tile);
+      return;
+    }
+    const img = document.createElement('img'); img.src = t.img; img.alt = '';
+    tile.appendChild(img);
+    open.setAttribute('aria-label', 'Open picture ' + (i + 1));
+    open.onclick = () => { if (!tidying) openPicture(id); };
+    tile.appendChild(open);
+    if (tidying) {
+      const b = document.createElement('div'); b.className = 'badges';
+      const k = document.createElement('button'); k.className = 'badge keep'; k.setAttribute('aria-label', 'Keep a copy of picture ' + (i + 1) + ' in the vault');
+      k.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+      k.onclick = () => moveToVault(id);
+      const d = document.createElement('button'); d.className = 'badge del'; d.textContent = '×'; d.setAttribute('aria-label', 'Delete picture ' + (i + 1));
+      d.onclick = () => askDelete(id);
+      b.append(k, d); tile.appendChild(b);
     }
     grid.appendChild(tile);
   });
 }
+// A mouse wheel scrolls the strip sideways on a computer.
+$('#grid').addEventListener('wheel', e => {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('#grid').scrollLeft += e.deltaY; e.preventDefault(); }
+}, { passive: false });
 $('#tidyBtn').onclick = () => {
   tidying = !tidying;
   $('#tidyBtn').classList.toggle('on', tidying);
@@ -625,7 +660,7 @@ $('#tidyBtn').onclick = () => {
   renderGallery();
 };
 function clearAll(){
-  const list = GIDS.filter(k => thumbs[k]);
+  const list = galleryIds();
   if (!list.length) { showBanner('There are no pictures to clear.'); return; }
   askSum('Answer the sum to clear all pictures.', () => confirmBox(
     list.length === 1 ? 'Clear the 1 picture?' : 'Clear all ' + list.length + ' pictures?',
@@ -879,7 +914,12 @@ async function openPicture(id){
 }
 // Nothing is saved until the tick is tapped. Leaving with changes throws them away,
 // so the picture goes back to how it was last saved.
-function leaveEditor(){ dirty = false; show('gallery'); renderGallery(); }
+function leaveEditor(){
+  dirty = false; show('gallery'); renderGallery();
+  // Bring the page just worked on into view.
+  const tile = curId && $('#grid .tile[data-id="' + curId + '"]');
+  if (tile) tile.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
 $('#homeBtn').onclick = () => {
   if (!dirty) { leaveEditor(); return; }
   confirmBox('Leave without saving?',
@@ -942,6 +982,12 @@ function encodePaint(){
   const t = document.createElement('canvas'); t.width = 900; t.height = 675; t.getContext('2d').drawImage(cv, 0, 0, 900, 675);
   return t.toDataURL('image/jpeg', 0.55);
 }
+// Big enough to stay sharp on the large cards, small enough for the 120 KB thumbnail limit in the Firestore rules.
+function encodeThumb(){
+  const t = composite(600, 450);
+  for (const q of [0.72, 0.6, 0.5, 0.4]) { const s = t.toDataURL('image/jpeg', q); if (s.length < 110000) return s; }
+  return composite(400, 300).toDataURL('image/jpeg', 0.6);
+}
 function composite(w, h){
   const t = document.createElement('canvas'); t.width = w; t.height = h;
   const x = t.getContext('2d'); x.drawImage(cv, 0, 0, w, h); x.drawImage(lc, 0, 0, w, h);
@@ -959,7 +1005,7 @@ async function saveNow(){
   try {
     const rec = { img: encodePaint(), tpl: curTpl };
     if (curLines && curLines.length < 40000) rec.lines = curLines; // small own-picture lines travel with the picture
-    await store.save(curId, rec, composite(320, 240).toDataURL('image/jpeg', 0.72));
+    await store.save(curId, rec, encodeThumb());
     isNew = false;
     setStatus('Saved', 'ok');
     return true;
@@ -1008,10 +1054,15 @@ function cheer(){
     speechSynthesis.speak(u);
   } catch (e) {}
 }
+let finishing = false;
 $('#tickBtn').onclick = async () => {
   if (readOnly) { setStatus('This page is view-only for you', 'err'); return; }
+  if (finishing) return;
   if ((dirty || isNew) && !(await saveNow())) return; // a new page saves even if it's still blank
   cheer();
+  // Back to the pictures once the cheer has had its moment; no drawing in between.
+  finishing = true; $('#editor').classList.add('finishing');
+  setTimeout(() => { finishing = false; $('#editor').classList.remove('finishing'); leaveEditor(); }, 1400);
 };
 
 /* ---------- full screen (Android Chrome, iPad; iPhone Safari has no full screen for pages) ---------- */
