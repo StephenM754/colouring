@@ -347,7 +347,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 
 <script>
 (function(){
-const W = 1200, H = 900, GSLOTS = 30, VSLOTS = 60;
+const W = 1200, H = 900, GSLOTS = 60, VSLOTS = 60;
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), lc = $('#lc');
 const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -697,7 +697,7 @@ function renderVault(){
 function alertVault(text){ $('#vcount').textContent = text; }
 async function restore(id){
   const to = firstFree(GIDS);
-  if (!to) { alertVault('All 30 spaces on the main page are full. Delete or keep one first.'); return; }
+  if (!to) { alertVault('All ' + GSLOTS + ' spaces on the main page are full. Delete one first.'); return; }
   try { await copyPicture(id, to); alertVault('Restored to the main page. It’s still kept here too.'); }
   catch (e) { alertVault('That picture couldn’t be restored. Check the connection.'); }
 }
@@ -916,7 +916,7 @@ async function saveNow(){
   if (saving) { pendingSave = true; return; }
   if (isNew && thumbs[curId] && thumbs[curId].by !== sessionId) {
     const free = firstFree(GIDS);
-    if (!free) { setStatus('All 30 spaces are full. Delete or keep a picture to save this one.', 'err'); return; }
+    if (!free) { setStatus('All ' + GSLOTS + ' spaces are full. Delete a picture to save this one.', 'err'); return; }
     curId = free;
   }
   saving = true; dirty = false; setStatus('Saving…');
