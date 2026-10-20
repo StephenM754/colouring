@@ -233,6 +233,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 /* Finished screen: the picture as big as the space allows, buttons underneath. */
 .finish{gap:clamp(8px,2vh,20px)}
 .finishImg{flex:1 1 0;min-height:0;max-width:100%;object-fit:contain;border:4px solid var(--edge);border-radius:18px;background:#fff;box-shadow:0 6px 0 var(--edge)}
+.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .finish .msg{margin:0;min-height:0}
 .finish .pz-main{flex-wrap:nowrap;gap:clamp(10px,4vw,48px);width:100%;max-width:640px}
 .finish .pzBig{flex:1 1 0;min-width:0;text-align:center;line-height:1.15}
@@ -369,7 +370,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 
 <!-- ===== Finished ===== -->
 <div id="finishOv" class="overlay pause finish" hidden role="dialog" aria-modal="true" aria-labelledby="fzTitle">
-  <h2 id="fzTitle">Well done!</h2>
+  <h2 id="fzTitle" class="srOnly">Well done!</h2>
   <img id="finishImg" class="finishImg" alt="Your picture">
   <p id="fMsg" class="msg" role="status"></p>
   <div class="pz-main">
@@ -1133,7 +1134,7 @@ $('#tickBtn').onclick = () => {
   $('#fMsg').textContent = '';
   $('#finishImg').src = composite(W, H).toDataURL('image/jpeg', 0.85);
   $('#finishOv').hidden = false; $('#fSave').focus();
-  say(word);
+  cheer(word); // the same big bubble word as Restart
 };
 $('#fBack').onclick = () => { $('#finishOv').hidden = true; };
 $('#fSave').onclick = async () => {
