@@ -730,7 +730,7 @@ function clearAll(){
       for (const k of list) { try { await store.remove(k); } catch (e) { failed++; } }
       if (tidying) $('#tidyBtn').click();
       showBanner(failed ? failed + ' pictures couldn’t be cleared. Check the connection and try again.' : 'All pictures cleared. Pictures in the vault are still kept.');
-    }));
+    }), 'Next');
 }
 $('#clearAllBtn').onclick = clearAll;
 function askDelete(id){
@@ -776,7 +776,7 @@ function newSum(){
   $('#ans').value = '';
 }
 let lockThen = null;
-function askSum(text, then){ lockThen = then; $('#lockText').textContent = text; newSum(); $('#lockMsg').textContent = ''; $('#lock').hidden = false; setTimeout(() => $('#ans').focus(), 50); }
+function askSum(text, then, yes){ lockThen = then; $('#lockText').textContent = text; $('#lockYes').textContent = yes || 'Open'; newSum(); $('#lockMsg').textContent = ''; $('#lock').hidden = false; setTimeout(() => $('#ans').focus(), 50); }
 $('#lockBtn').onclick = () => askSum('Answer the sum to open the vault.', openVault);
 $('#themeBtn').onclick = () => {
   const dark = document.documentElement.dataset.theme !== 'dark';
