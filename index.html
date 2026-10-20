@@ -101,12 +101,12 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 /* ---------- editor ---------- */
 .topbar{display:flex;align-items:center;gap:10px;padding:12px 0}
 .spacer{flex:1}
-.tbtn{display:flex;align-items:center;gap:8px;height:56px;padding:0 18px;border-radius:18px;
+.tbtn{flex:none;display:flex;align-items:center;gap:8px;height:56px;padding:0 18px;border-radius:18px;
   border:3px solid var(--edge);background:var(--tray);box-shadow:0 4px 0 var(--edge);font-weight:600;font-size:1.05rem}
 .tbtn svg{width:26px;height:26px;flex:none}
 .tbtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
 .tbtn:disabled{opacity:.45;cursor:default}
-.status{font-size:1rem;color:var(--ink-soft);font-weight:500;padding-left:4px}
+.status{min-width:0;font-size:1rem;line-height:1.2;color:var(--ink-soft);font-weight:500;padding-left:4px}
 .status.err{color:var(--err)}
 .status.ok{color:var(--ok)}
 .workspace{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr;gap:16px;padding-bottom:14px}
@@ -124,13 +124,64 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 .paper canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #cv{touch-action:none;cursor:crosshair}
 #lc{pointer-events:none}
-@media (orientation: portrait), (max-width: 760px){
+#fsBtn .exit{display:none}
+.fs #fsBtn .enter{display:none}
+.fs #fsBtn .exit{display:block}
+
+/* Portrait: actions along the top, tools in a row underneath, sized to fit the width. */
+@media (orientation: portrait){
   .workspace{grid-template-columns:1fr;grid-template-rows:1fr auto;gap:12px}
   .stage{order:1}
-  .tools{order:2;flex-direction:row;justify-content:center}
-  .tool{width:76px;height:76px}
+  .tools{order:2;flex-direction:row;justify-content:center;gap:10px}
+  .tool{--ts:min(76px, calc((100vw - 28px - 40px) / 5));width:var(--ts);height:var(--ts);border-radius:calc(var(--ts) * .28)}
+  .tool svg{width:calc(var(--ts) * .55);height:calc(var(--ts) * .55)}
+  .colourBtn .dot{width:calc(var(--ts) * .5);height:calc(var(--ts) * .5)}
   .tbtn .txt{display:none}
   .tbtn{width:56px;padding:0;justify-content:center}
+  #fsBtn{display:none !important}
+}
+@media (orientation: portrait) and (max-width: 500px){
+  .tool span:not(.dot){display:none}
+  .topbar{gap:8px}
+  .status{font-size:.85rem}
+  .tbtn{width:50px;height:50px;border-radius:16px}
+}
+
+/* Landscape: no top bar. Tools are a rail locked to the left, actions a rail locked to the right,
+   and the drawing page takes all the height. Button size comes from the screen height so both
+   rails (5 buttons each) always fit. */
+@media (orientation: landscape){
+  #editor{
+    --rb:clamp(40px, calc((100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 5), 84px);
+    --rb:clamp(40px, calc((100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 12px - 48px) / 5), 84px);
+    display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:1fr repeat(5,auto) 1fr;
+    /* --rb: 5 buttons + 6 row gaps (8px) + 12px padding must fit the height */
+    column-gap:12px;row-gap:8px;padding-block:6px;position:relative;
+  }
+  #editor[hidden]{display:none}
+  .topbar,.workspace{display:contents}
+  .spacer{display:none}
+  .tools{grid-column:1;grid-row:1 / -1;flex-direction:column;justify-content:center;gap:8px}
+  .stage{grid-column:2;grid-row:1 / -1}
+  #homeBtn{grid-column:3;grid-row:2}
+  #undoBtn{grid-column:3;grid-row:3}
+  #resetBtn{grid-column:3;grid-row:4}
+  #downloadBtn{grid-column:3;grid-row:5}
+  #fsBtn{grid-column:3;grid-row:6}
+  .tool,.tbtn{width:var(--rb);height:var(--rb);border-radius:calc(var(--rb) * .28);padding:0;justify-content:center}
+  .tool svg{width:calc(var(--rb) * .56);height:calc(var(--rb) * .56)}
+  .tbtn svg{width:calc(var(--rb) * .42);height:calc(var(--rb) * .42)}
+  .colourBtn .dot{width:calc(var(--rb) * .5);height:calc(var(--rb) * .5)}
+  .tool[aria-pressed="true"]{transform:translateX(4px);box-shadow:0 4px 0 var(--edge)}
+  .tbtn .txt,.tool span:not(.dot){display:none}
+  .status{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;
+    background:var(--tray);border:2px solid var(--edge);border-radius:999px;padding:2px 12px;font-size:.85rem;white-space:nowrap}
+  .status:empty{display:none}
+}
+/* Taller landscape screens (iPad, desktop) have room for the tool names. */
+@media (orientation: landscape) and (min-height: 640px){
+  .tool span:not(.dot){display:block;font-size:.75rem}
+  .tool svg{width:calc(var(--rb) * .48);height:calc(var(--rb) * .48)}
 }
 
 /* ---------- full-screen overlays ---------- */
@@ -230,6 +281,11 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
     <button id="downloadBtn" class="tbtn" aria-label="Save to device">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
       <span class="txt">Save to device</span>
+    </button>
+    <button id="fsBtn" class="tbtn" aria-label="Full screen" hidden>
+      <svg class="enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <svg class="exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+      <span class="txt">Full screen</span>
     </button>
   </div>
   <div class="workspace">
@@ -884,6 +940,27 @@ async function saveNow(){
   saving = false;
   if (pendingSave) { pendingSave = false; saveNow(); }
 }
+
+/* ---------- full screen (Android Chrome, iPad; iPhone Safari has no full screen for pages) ---------- */
+(function(){
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  const exit = document.exitFullscreen || document.webkitExitFullscreen;
+  const current = () => document.fullscreenElement || document.webkitFullscreenElement;
+  if (!req || !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return;
+  const btn = $('#fsBtn'); btn.hidden = false;
+  const sync = () => { const on = !!current(); el.classList.toggle('fs', on); btn.setAttribute('aria-label', on ? 'Leave full screen' : 'Full screen'); };
+  document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+  btn.onclick = async () => {
+    try {
+      if (current()) await exit.call(document);
+      else {
+        await req.call(el);
+        try { await screen.orientation.lock('landscape'); } catch (e) {} // Android only; ignored elsewhere
+      }
+    } catch (e) {}
+  };
+})();
 
 /* ---------- save a copy to the device ---------- */
 $('#downloadBtn').onclick = () => {
