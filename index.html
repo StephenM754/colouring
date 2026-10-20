@@ -820,7 +820,18 @@ function blank(){ ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.
 async function setLines(src){
   lctx.clearRect(0, 0, W, H);
   const img = await loadImg(src);
-  if (img) lctx.drawImage(img, 0, 0, W, H);
+  if (!img) return;
+  lctx.drawImage(img, 0, 0, W, H);
+  // Templates use white fills to hide the lines behind a shape (flower centre, wheels, faces).
+  // Keep only the dark ink so colouring underneath those shapes shows through.
+  const d = lctx.getImageData(0, 0, W, H), p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    if (!p[i + 3]) continue;
+    const L = .299 * p[i] + .587 * p[i + 1] + .114 * p[i + 2];
+    const ink = Math.max(0, Math.min(1, (255 - L) / 228));
+    p[i] = 27; p[i + 1] = 27; p[i + 2] = 31; p[i + 3] = Math.round(p[i + 3] * ink);
+  }
+  lctx.putImageData(d, 0, 0);
 }
 
 async function startNew(tplId){
