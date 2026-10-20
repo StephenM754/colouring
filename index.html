@@ -671,7 +671,7 @@ function renderGallery(){
   $('#tidyNote').hidden = !tidying;
   grid.innerHTML = '';
   const n = galleryIds().length, left = Math.max(0, GSLOTS - n);
-  $('#count').textContent = left + (left === 1 ? ' blank page' : ' blank pages') + ' left of ' + GSLOTS + (mode === 'shared' ? ' · shared with everyone' : '');
+  $('#count').textContent = left + (left === 1 ? ' blank page' : ' blank pages') + ' left of ' + GSLOTS;
   const extra = galleryIds().filter(k => !GIDS.includes(k)).sort((a, b) => +a.slice(1) - +b.slice(1));
   GIDS.concat(extra).forEach((id, i) => {
     const t = thumbs[id];
