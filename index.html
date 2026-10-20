@@ -569,6 +569,15 @@ const TEMPLATES = [
 ];
 function tplSvg(t){ return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900"><g ' + G + '>' + t.art + '</g></svg>'); }
 TEMPLATES.forEach(t => t.src = tplSvg(t));
+// Pictures to colour, shown first in the chooser. Files live in templates/. Ids start with "p-"
+// because ids starting with "c" mean a picture added on this device.
+const PICTURES = [
+  ['pip', 'Pip'], ['posy', 'Posy'], ['cookie-monster', 'Cookie Monster'], ['elmo', 'Elmo'],
+  ['zog', 'Zog'], ['highway-rat', 'Highway Rat'], ['gruffalos-child', "The Gruffalo's Child"], ['gruffalo-friends', 'Gruffalo and friends'],
+  ['snail-and-whale', 'Snail and the Whale'], ['smartest-giant', 'Smartest Giant'], ['room-on-the-broom', 'Room on the Broom'],
+  ['squash-and-squeeze', 'Squash and a Squeeze'], ['shrek', 'Shrek'], ['sulley', 'Sulley'], ['unicorn', 'Unicorn'],
+  ['go-jetters', 'Go Jetters'], ['go-jetters-robots', 'Go Jetters robots'], ['glitchbots', 'Glitchbots'], ['duggee-hug', 'Duggee Hug']
+].map(([file, name]) => ({ id: 'p-' + file, name, src: 'templates/' + file + '.png' }));
 let customTemplates = []; // [{id, name, src}] kept on this device
 
 /* ================= state ================= */
@@ -827,7 +836,7 @@ async function openChooser(id){
   const g = $('#tgrid'); g.innerHTML = '';
   const add = (cls, html, label, fn) => { const b = document.createElement('button'); b.className = 'tpl ' + cls; b.innerHTML = html; b.setAttribute('aria-label', label); b.onclick = fn; g.appendChild(b); return b; };
   add('blank', '<span class="cap">Blank page</span>', 'Blank page', () => startNew(null));
-  TEMPLATES.forEach(t => add('', '<img alt="" src="' + t.src + '"><span class="cap">' + t.name + '</span>', t.name, () => startNew(t.id)));
+  PICTURES.forEach(t => add('', '<img alt="" loading="lazy" src="' + t.src + '"><span class="cap">' + t.name + '</span>', t.name, () => startNew(t.id)));
   customTemplates.forEach(t => add('', '<img alt="" src="' + t.src + '"><span class="cap">' + t.name + '</span>', t.name, () => startNew(t.id)));
   add('add', '<span class="plus">+</span><span class="lbl">Add your own picture to colour</span>', 'Add your own picture to colour', () => $('#fileIn').click());
   $('#chooser').hidden = false;
@@ -863,7 +872,7 @@ function toLineArt(img){
 }
 function tplSrc(tplId, lines){
   if (!tplId) return null;
-  const b = TEMPLATES.find(t => t.id === tplId); if (b) return b.src;
+  const b = PICTURES.find(t => t.id === tplId) || TEMPLATES.find(t => t.id === tplId); if (b) return b.src; // old drawings still open
   const c = customTemplates.find(t => t.id === tplId); if (c) return c.src;
   return lines || null;
 }
