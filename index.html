@@ -68,6 +68,8 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
   box-shadow:0 4px 0 var(--edge);display:flex;align-items:center;justify-content:center;padding:0}
 .lockBtn svg{width:28px;height:28px}
 .lockBtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--edge)}
+.banner.withAction{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.banner .pill{padding:6px 16px;box-shadow:0 3px 0 var(--edge)}
 .banner{margin:0 4px 14px;padding:12px 16px;border-radius:16px;background:var(--muted);
   border:2px dashed var(--edge);font-size:.98rem;line-height:1.4;max-width:70ch}
 
@@ -482,7 +484,16 @@ const ids = (p, n) => Array.from({ length: n }, (_, i) => p + i);
 const GIDS = ids('g', GSLOTS), VIDS = ids('v', VSLOTS);
 const used = list => list.filter(k => thumbs[k]).length;
 const firstFree = list => list.find(k => !thumbs[k]) || null;
-function showBanner(text){ const b = $('#banner'); b.textContent = text || ''; b.hidden = !text; }
+// action: optional { label, fn } shown as a button after the text, e.g. Undo
+function showBanner(text, action){
+  const b = $('#banner'); b.textContent = text || ''; b.hidden = !text;
+  b.classList.toggle('withAction', !!action);
+  if (text && action) {
+    const btn = document.createElement('button'); btn.className = 'pill'; btn.textContent = action.label;
+    btn.onclick = () => { btn.disabled = true; action.fn(); };
+    b.appendChild(btn);
+  }
+}
 function setStatus(text, kind){ const s = $('#status'); s.textContent = text || ''; s.className = 'status' + (kind ? ' ' + kind : ''); }
 function show(screen){ ['gallery','vault','editor'].forEach(s => $('#' + s).hidden = s !== screen); }
 function loadImg(src){ return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
@@ -551,16 +562,29 @@ function askDelete(id){
     mode === 'shared' ? 'It will be removed for everyone who uses this page.' : 'It will be removed from this device.',
     'Delete', 'Keep it', async () => { try { await store.remove(id); } catch (e) { showBanner('That picture couldn’t be deleted. Check the connection and try again.'); } });
 }
-async function copyPicture(from, to){
+async function copyPicture(from, to, thumb){
   const rec = await store.load(from);
   if (!rec) throw new Error('missing');
-  await store.save(to, rec, thumbs[from].img);
+  await store.save(to, rec, thumb || thumbs[from].img);
 }
-async function moveToVault(id){
+function moveToVault(id){
   const to = firstFree(VIDS);
   if (!to) { showBanner('The vault is full (50 pictures). Delete something from the vault first.'); return; }
-  try { await copyPicture(id, to); await store.remove(id); showBanner('Picture moved to the vault.'); }
-  catch (e) { showBanner('That picture couldn’t be moved. Check the connection and try again.'); }
+  confirmBox('Keep this picture in the vault?', 'It will leave the main page and go into the grown-ups’ vault.',
+    'Keep it safe', 'Not now', async () => {
+      const thumb = thumbs[id].img;
+      try {
+        await copyPicture(id, to, thumb); await store.remove(id);
+        showBanner('Picture moved to the vault.', { label: 'Undo', fn: () => undoMove(to, id, thumb) });
+      } catch (e) { showBanner('That picture couldn’t be moved. Check the connection and try again.'); }
+    });
+}
+// Put a just-moved picture back in its old space, or the first free one if that has been used since.
+async function undoMove(vaultId, homeId, thumb){
+  const to = thumbs[homeId] ? firstFree(GIDS) : homeId;
+  if (!to) { showBanner('The main page is full, so the picture stays in the vault.'); return; }
+  try { await copyPicture(vaultId, to, thumb); await store.remove(vaultId); showBanner('Picture put back on the main page.'); }
+  catch (e) { showBanner('That picture couldn’t be put back. It’s still safe in the vault.'); }
 }
 
 /* ================= vault ================= */
