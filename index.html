@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Colouring">
+<meta name="theme-color" content="#FFD84D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <title>Colouring</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -238,6 +245,15 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
 .pzBig:active .disc{transform:translateY(4px);box-shadow:0 2px 0 var(--edge)}
 .pz-extra{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .pz-extra .pill{font-size:.9rem;padding:8px 16px}
+/* Phones and tablets held upright: ask for landscape. Computers are left alone. */
+.rotate{display:none;position:fixed;inset:0;z-index:50;background:var(--bg);color:var(--ink);
+  flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
+.rotate h2{margin:0;font-size:2rem;font-weight:700}
+.rotate p{margin:0;color:var(--ink-soft);font-size:1.05rem;max-width:28ch}
+.rotIcon{width:140px;height:140px;animation:turnMe 2.4s ease-in-out infinite}
+@keyframes turnMe{0%,20%{transform:rotate(0)}45%,75%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@media (prefers-reduced-motion: reduce){.rotIcon{animation:none;transform:rotate(-90deg)}}
+@media (orientation: portrait) and (pointer: coarse){ .rotate{display:flex} }
 /* The cheer that pops up on the tick and on Restart. */
 .cheer{position:fixed;left:50%;top:50%;z-index:30;pointer-events:none;transform:translate(-50%,-50%);
   font-size:clamp(3rem,11vw,7rem);font-weight:700;color:#FF8A1F;white-space:nowrap;
@@ -373,6 +389,12 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--accent);outline
   <div class="pz-extra">
     <button id="fsBtn" class="pill" hidden>Full screen</button>
   </div>
+</div>
+<!-- ===== Turn me sideways (phones and tablets held upright) ===== -->
+<div id="rotate" class="rotate" role="alert">
+  <svg class="rotIcon" viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="#1E2A5A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><rect x="38" y="18" width="44" height="84" rx="9" fill="#FFFFFF"/><path d="M54 92h12"/></g></svg>
+  <h2>Turn me sideways!</h2>
+  <p>Colouring works best with the screen on its side.</p>
 </div>
 <!-- Outside the editor so it stays on screen while the app goes back to the pictures. -->
 <div id="cheer" class="cheer" role="status" hidden></div>
@@ -1130,14 +1152,19 @@ $('#fSave').onclick = async () => {
   const btn = $('#fsBtn'); btn.hidden = false;
   const sync = () => { const on = !!current(); el.classList.toggle('fs', on); btn.textContent = on ? 'Leave full screen' : 'Full screen'; };
   document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
-  btn.onclick = async () => {
+  const enter = async () => {
     try {
-      if (current()) await exit.call(document);
-      else {
-        await req.call(el);
-        try { await screen.orientation.lock('landscape'); } catch (e) {} // Android only; ignored elsewhere
-      }
+      await req.call(el);
+      try { await screen.orientation.lock('landscape'); } catch (e) {} // Android only; ignored elsewhere
     } catch (e) {}
+  };
+  // On phones and tablets, go full screen with the first tap (browsers only allow it from a tap),
+  // and again after leaving it, unless a grown-up turned it off on the pause screen.
+  let keepFull = matchMedia('(pointer: coarse)').matches && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+  document.addEventListener('pointerup', () => { if (keepFull && !current()) enter(); }, true);
+  btn.onclick = async () => {
+    if (current()) { keepFull = false; try { await exit.call(document); } catch (e) {} }
+    else { keepFull = matchMedia('(pointer: coarse)').matches; enter(); }
   };
 })();
 
@@ -1202,6 +1229,8 @@ async function start(){
       ? 'These pictures are saved on this device only. Sign in to Claude to share pictures with everyone.'
       : 'These pictures are saved on this device only.');
   }
+  // iPhone Safari can't go full screen from a web page; the Home Screen icon can.
+  if (/iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone) showBanner('Tip: for full screen, tap Share, then “Add to Home Screen”, and open Colouring from there.');
   const onThumbs = m => { thumbs = m; if (!$('#gallery').hidden) renderGallery(); if (!$('#vault').hidden) renderVault(); };
   store.subscribe(onThumbs, () => showBanner('Lost touch with the shared pictures. Reload the page to see the latest ones.'));
 }

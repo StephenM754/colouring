@@ -28,6 +28,8 @@ Pictures drawn in the Claude artifact version don't carry over. Use "Save to dev
 4. After a minute or two the app is at `https://stephenm754.github.io/colouring/`.
 5. On each iPad, open that URL in Safari, then **Share → Add to Home Screen** so it opens full screen like an app.
 
+The app is landscape only: phones and tablets held upright see a "Turn me sideways!" screen. On Android and iPad it goes full screen on the first tap (Android also locks to landscape). iPhone Safari can't do that for web pages, so use the Home Screen icon there. `manifest.webmanifest` and `icons/` give the Home Screen version its name, icon, full screen and landscape.
+
 ## Sharing pictures across iPads (optional, free)
 
 Firebase's free Spark plan is plenty for this: Firestore allows 1 GiB stored and 50k reads / 20k writes a day. Each saved picture is roughly 100–250 KB.
