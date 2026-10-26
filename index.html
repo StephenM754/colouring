@@ -569,7 +569,8 @@ const TEMPLATES = [
 ];
 function tplSvg(t){ return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900"><g ' + G + '>' + t.art + '</g></svg>'); }
 TEMPLATES.forEach(t => t.src = tplSvg(t));
-// Pictures to colour, shown first in the chooser. Files live in templates/. Ids start with "p-"
+// Pictures to colour, shown first in the chooser. Files live in templates/ (also listed in sw.js
+// so they work offline). Ids start with "p-"
 // because ids starting with "c" mean a picture added on this device.
 const PICTURES = [
   ['pip', 'Pip'], ['posy', 'Posy'], ['cookie-monster', 'Cookie Monster'], ['elmo', 'Elmo'],
@@ -590,8 +591,11 @@ let undo = [];
 let tidying = false;
 
 /* ================= storage: shared (Claude db or Firebase — same API shape) ================= */
+// With Firebase, the device keeps its own copy of the shared pictures (offline: true), so the app
+// works with no connection: it shows the last pictures it saw, and saves made offline are applied
+// on the device at once and upload by themselves when the connection is back.
 const Shared = {
-  db: null, raw: {},
+  db: null, raw: {}, offline: false,
   norm(docId){ const m = /^slot(\d+)$/.exec(docId); return m ? 'g' + m[1] : docId; },
   subscribe(cb, onErr){
     this.db.collection('thumbs').onSnapshot(snap => {
@@ -599,23 +603,36 @@ const Shared = {
       snap.docs.forEach(d => { const v = d.data(); if (!v) return; const k = this.norm(d.id); this.raw[k] = d.id; m[k] = v; });
       cb(m);
     }, onErr);
+    // Keep every full picture in the device's copy too, so any picture can be opened offline.
+    if (this.offline) this.db.collection('pictures').onSnapshot(() => {}, () => {});
   },
   async load(id){
-    const s = await this.db.doc('pictures/' + (this.raw[id] || id)).get();
+    const ref = this.db.doc('pictures/' + (this.raw[id] || id));
+    if (this.offline) {
+      try { const c = await ref.get({ source: 'cache' }); if (c.exists) return c.data(); } catch (e) {}
+    }
+    const s = await ref.get();
     const v = s.data ? s.data() : null; return v || null;
+  },
+  // Offline, Firebase only confirms a write once it reaches the server. The device copy updates
+  // at once, so wait briefly for the server and otherwise carry on; the write uploads later.
+  async commit(writes){
+    const all = Promise.all(writes);
+    if (!this.offline) return all;
+    all.catch(() => showBanner('A picture couldn’t be uploaded. Check the connection, then save it again.'));
+    await Promise.race([all, new Promise(r => setTimeout(r, 1500))]);
   },
   async save(id, rec, thumb){
     const body = { img: rec.img, tpl: rec.tpl || null };
     if (rec.lines) body.lines = rec.lines;
-    await this.db.doc('pictures/' + id).set(body);
-    await this.db.doc('thumbs/' + id).set({ img: thumb, updated: Date.now(), by: sessionId });
+    const writes = [this.db.doc('pictures/' + id).set(body), this.db.doc('thumbs/' + id).set({ img: thumb, updated: Date.now(), by: sessionId })];
     const old = this.raw[id];
-    if (old && old !== id) { try { await this.db.doc('thumbs/' + old).delete(); await this.db.doc('pictures/' + old).delete(); } catch (e) {} }
+    if (old && old !== id) writes.push(this.db.doc('thumbs/' + old).delete().catch(() => {}), this.db.doc('pictures/' + old).delete().catch(() => {}));
+    await this.commit(writes);
   },
   async remove(id){
     const r = this.raw[id] || id;
-    await this.db.doc('thumbs/' + r).delete();
-    await this.db.doc('pictures/' + r).delete();
+    await this.commit([this.db.doc('thumbs/' + r).delete(), this.db.doc('pictures/' + r).delete()]);
   }
 };
 
@@ -1225,9 +1242,26 @@ async function connectFirebase(){
     await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
     await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js');
     window.firebase.initializeApp(cfg);
-    return window.firebase.firestore();
+    const fs = window.firebase.firestore();
+    // Keep a copy of the shared pictures on this device (shared between open tabs).
+    try { await fs.enablePersistence({ synchronizeTabs: true }); Shared.offline = true; } catch (e) {}
+    return fs;
   } catch (e) { return null; }
 }
+// Tell people when there's no connection; pictures still save and upload later.
+function watchConnection(){
+  let before = '';
+  const note = () => {
+    if (!navigator.onLine) { if (standingNote !== OFFLINE_NOTE) before = standingNote; showBanner(OFFLINE_NOTE, null, true); }
+    else if (standingNote === OFFLINE_NOTE) showBanner(before, null, true);
+  };
+  window.addEventListener('offline', note);
+  window.addEventListener('online', () => { note(); showBanner('Back online. New pictures are uploading.'); });
+  if (!navigator.onLine) note();
+}
+const OFFLINE_NOTE = 'No internet right now. Pictures still save on this iPad and upload when it’s back online.';
+// The app itself opens without a connection too (see sw.js).
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 async function start(){
   buildTools();
   await Local.init();
@@ -1238,7 +1272,7 @@ async function start(){
     window.claude.use('downloads').then(d => { if (d) claudeDownloads = d; }).catch(() => {});
   }
   if (!db) db = await connectFirebase();
-  if (db) { Shared.db = db; store = Shared; mode = 'shared'; }
+  if (db) { Shared.db = db; store = Shared; mode = 'shared'; if (Shared.offline) watchConnection(); }
   else {
     store = Local; mode = 'local';
     showBanner(inClaude
