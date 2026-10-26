@@ -2,7 +2,7 @@
 // this keeps the app, the pictures to colour, the icons, the font and the Firebase code.
 // The page is fetched fresh when online (so updates arrive) and from the copy when offline.
 // Everything else is served from the copy and refreshed in the background.
-const CACHE = 'colouring-v1';
+const CACHE = 'colouring-v2';
 const PICTURES = ['pip', 'posy', 'cookie-monster', 'elmo', 'zog', 'highway-rat', 'gruffalos-child', 'gruffalo-friends',
   'snail-and-whale', 'smartest-giant', 'room-on-the-broom', 'squash-and-squeeze', 'shrek', 'sulley', 'unicorn',
   'go-jetters', 'go-jetters-robots', 'glitchbots', 'duggee-hug'];
@@ -12,9 +12,11 @@ const START = ['./', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-5
   FIREBASE + 'firebase-app-compat.js', FIREBASE + 'firebase-firestore-compat.js'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => Promise.all(START.map(u =>
-    c.add(new Request(u, { mode: u.startsWith('http') ? 'no-cors' : 'same-origin' })).catch(() => {})
-  ))).then(() => self.skipWaiting()));
+  // cache.add() refuses other sites' files (they come back "opaque"), so fetch and store them directly.
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(START.map(u => {
+    const req = new Request(u, { mode: u.startsWith('http') ? 'no-cors' : 'same-origin' });
+    return fetch(req).then(res => (res.ok || res.type === 'opaque') && c.put(req, res)).catch(() => {});
+  }))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
