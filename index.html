@@ -1259,7 +1259,7 @@ function watchConnection(){
   window.addEventListener('online', () => { note(); showBanner('Back online. New pictures are uploading.'); });
   if (!navigator.onLine) note();
 }
-const OFFLINE_NOTE = 'No internet right now. Pictures still save on this iPad and upload when it’s back online.';
+const OFFLINE_NOTE = 'No internet right now. Pictures still save on this device and upload when it’s back online.';
 // The app itself opens without a connection too (see sw.js).
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 async function start(){

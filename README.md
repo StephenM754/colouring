@@ -30,6 +30,12 @@ Pictures drawn in the Claude artifact version don't carry over. Use "Save to dev
 
 The app is landscape only: phones and tablets held upright see a "Turn me sideways!" screen. On Android and iPad it goes full screen on the first tap (Android also locks to landscape). iPhone Safari can't do that for web pages, so use the Home Screen icon there. `manifest.webmanifest` and `icons/` give the Home Screen version its name, icon, full screen and landscape.
 
+## Working offline
+
+With Firebase set up, each device keeps its own copy of the shared pictures. With no internet it shows the last pictures it saw, any of them can be opened, and saving, keeping and deleting still work. Those changes upload by themselves when the connection is back. `sw.js` (a service worker) keeps the app, the pictures to colour, the icons, the font and the Firebase code on the device so the app opens offline too; if you add a picture to `templates/`, add it to the list in `sw.js` as well.
+
+If two devices both start a new picture on the same blank page while one of them is offline, the one that uploads last wins that page.
+
 ## Sharing pictures across iPads (optional, free)
 
 Firebase's free Spark plan is plenty for this: Firestore allows 1 GiB stored and 50k reads / 20k writes a day. Each saved picture is roughly 100–250 KB.
